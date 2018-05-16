@@ -1,5 +1,5 @@
 theory Section_2_4
-  imports Main Section_2_2
+  imports Section_2_2
 begin
 
 (* Exercise 2.9 *)
