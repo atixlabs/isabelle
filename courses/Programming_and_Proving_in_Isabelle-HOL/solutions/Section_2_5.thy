@@ -74,15 +74,15 @@ corollary explode_nodes_tip: "nodes (explode n Tip) = 2^(n+1) - 1"
 datatype exp = Var | Const int | Add exp exp | Mult exp exp
 
 fun eval :: "exp \<Rightarrow> int \<Rightarrow> int" where
-"eval Var x = x" |
-"eval (Const n) _ = n" |
-"eval (Add e e') x = eval e x + eval e' x" |
+"eval Var         x = x" |
+"eval (Const n)   _ = n" |
+"eval (Add e e')  x = eval e x + eval e' x" |
 "eval (Mult e e') x = eval e x * eval e' x"
 
 value "eval (Mult (Add Var (Const 1)) Var) 2" (* eval ((v + 1) * v) 2 = 6 *)
 
 fun evalp' :: "nat \<Rightarrow> int list \<Rightarrow> int \<Rightarrow> int" where
-"evalp' _ [] _ = 0" |
+"evalp' _ []     _ = 0" |
 "evalp' k (c#cs) x = (let term_val = c*x^k in term_val + evalp' (k+1) cs x)"
 
 fun evalp :: "int list \<Rightarrow> int \<Rightarrow> int" where
@@ -92,39 +92,22 @@ value "evalp [4, 2, -1, 3] 2" (* 28 *)
 
 (* TODO: I didn't search for something "à la Haskell" and implemented it myself from scratch. *)
 fun add_coeffs :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
-"add_coeffs [] ys         = ys" |
-"add_coeffs xs []         = xs" |
+"add_coeffs []     ys     = ys" |
+"add_coeffs xs     []     = xs" |
 "add_coeffs (x#xs) (y#ys) = (x+y) # add_coeffs xs ys"
 
 value "add_coeffs [1,2,3] [1,2,3,4,5]" (* [2,4,6,4,5] *)
 value "add_coeffs [1,2,3,4,5] [1,2,3]" (* [2,4,6,4,5] *)
-value "add_coeffs [1,2,3] [1,2,3]" (* [2,4,6] *)
+value "add_coeffs [1,2,3] [1,2,3]"     (* [2,4,6] *)
 
-fun add_index :: "int list \<Rightarrow> (nat \<times> int) list" where
-"add_index l = zip [0..<length l] l"
+value "evalp' 0 (add_coeffs [1,2,3] [1,2,3,4,5]) 7 = evalp' 0 [1,2,3] 7 + evalp' 0 [1,2,3,4,5] 7"
 
-value "add_index [1,2,3,4]" (* [(0,1), (1,2), (2,3), (3,4)] *)
-
-fun list_max :: "nat list \<Rightarrow> nat" where
-"list_max xs = fold max xs 0"
-
-value "list_max [1,2,3,10,3]"
-
-(* NOTE: The warning "The following clauses are redundant (covered by preceding clauses):" can be
-   safely be ignored. *)
-(*
-fun mult_coeffs :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
-"mult_coeffs xs ys = 
-  (let 
-    xs' = add_index xs;
-    ys' = add_index ys;
-    zs  = [(i + j, x * y) . (i, x) \<leftarrow> xs', (j, y) \<leftarrow> ys'];
-    n   = list_max [k. (k, _) \<leftarrow> zs];
-    zs' = [(i, \<Sum> p \<leftarrow> [(j, _) \<leftarrow> zs . j = i] . snd p) . i \<leftarrow> [0..<n+1]]
-  in map snd zs')"
-
-value "mult_coeffs [1, 2, 1, 3]  [2, 0, 1]"
-*)
+(* TODO: I needed simultaneous induction here, had to Google a little bit ib order to discover it. 
+         Can this be proved using a simpler method? *)
+lemma evalp'_add_coeffs [simp]: "evalp' n (add_coeffs xs ys) x = evalp' n xs x + evalp' n ys x"
+  apply (induction xs ys arbitrary: n rule: add_coeffs.induct)
+  apply (auto simp add: algebra_simps)
+  done
 
 fun pad_with_zero :: "nat \<Rightarrow> int list \<Rightarrow> int list" where
 "pad_with_zero n xs = xs @ replicate (n - length xs) 0"
@@ -132,26 +115,22 @@ fun pad_with_zero :: "nat \<Rightarrow> int list \<Rightarrow> int list" where
 value "pad_with_zero 3 [1,2]"
 
 (*
-theorem pad_with_zero_spec: "(length (pad_with_zero n xs) = max (length xs) n) \<and> nths xs {0..max (length xs) n} = xs"
+NOTE: An attempt to prove pad_with_zero correct. Complete it if time is available.
+
+theorem pad_with_zero_spec: 
+  "xs \<noteq> [] \<Longrightarrow>(length (pad_with_zero n xs) = max (length xs) n) \<and> 
+    nths (pad_with_zero n xs) {0..length xs - 1} = xs \<and>
+      nths (pad_with_zero n xs) {length xs..max (length xs) n} = replicate (max (length xs) n - length xs) 0" 
   apply (induction xs)
   apply (auto simp add: algebra_simps)
   done
 *)
 
-(* Assume length p = length q *)
+(* NOTE: Assumes length p = length q *)
 fun conv :: "nat \<Rightarrow> int list \<Rightarrow> int list \<Rightarrow> int" where
-"conv i p q = (\<Sum> j \<leftarrow> [0..<i+1] . p!j * q!(i-j))"
+"conv i xs ys = (\<Sum> j \<leftarrow> [0..<i+1] . xs ! j * ys ! (i-j))"
 
 value "conv 3 [0,1,0,0] [0,0,1,0]"
-
-(*
-function mult_coeffs' :: "nat \<Rightarrow> nat \<Rightarrow> int list \<Rightarrow> int list \<Rightarrow> int list" 
-where
-  "mult_coeffs' i N xs ys = (if i > N then [] else (conv i xs ys) # mult_coeffs' (i+1) N xs ys)"
-by auto
-termination
-by (relation "measure (\<lambda>(i,N,_,_). N + 1 - i)") auto
-*)
 
 fun mult_coeffs' :: "nat \<Rightarrow> nat \<Rightarrow> int list \<Rightarrow> int list \<Rightarrow> int list" where
 (* TODO: Is "case" recommended instead of "if"? With "if" the simplifier seems to loop forever. *)
@@ -164,11 +143,15 @@ value "mult_coeffs' 3 3 (pad_with_zero 3 [0,1]) (pad_with_zero 3 [0,1])"
 
 value "evalp' 0 (mult_coeffs' 3 3 (pad_with_zero 3 [0,1]) (pad_with_zero 3 [0,1])) 7 = evalp' 0 [0,1] 7 * evalp' 0 [0,1] 7" 
 
-lemma 
-  assumes "length xs > 0 \<and> length ys > 0"
-  shows "evalp' 0 (mult_coeffs' (length xs + length ys - 1) (length xs + length ys - 1) (pad_with_zero (length xs + length ys - 1) xs) (pad_with_zero (length xs + length ys - 1) ys)) x = evalp' 0 xs x * evalp' 0 ys x"
-  (* apply (auto simp add: algebra_simps simp add: nat.split) *)
-  using assms by (induct xs ys rule: list_induct2') (simp_all add: algebra_simps add: nat.split)
+(* TODO: Prove this. *)
+lemma evalp'_mult_coeffs': "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> 
+  evalp' 0 (mult_coeffs' 
+    (length xs + length ys - 1) (length xs + length ys - 1) 
+    (pad_with_zero (length xs + length ys - 1) xs) (pad_with_zero (length xs + length ys - 1) ys)) x 
+      = evalp' 0 xs x * evalp' 0 ys x"
+  apply (induct xs ys rule: list_induct2') 
+  apply (auto simp add: algebra_simps)
+  done
 
 fun mult_coeffs :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
 "mult_coeffs xs ys = 
@@ -177,14 +160,46 @@ fun mult_coeffs :: "int list \<Rightarrow> int list \<Rightarrow> int list" wher
     xs' = pad_with_zero n xs;
     ys' = pad_with_zero n ys
    in
-    mult_coeffs' n n xs' ys')
-"
+    mult_coeffs' n n xs' ys')"
 
-value "mult_coeffs [2] [2]" (* 2 * 2 = [4] = 4 *)
-value "mult_coeffs [2] [0,1]" (* 2 * x = [0,2] = 2 x *)
-value "mult_coeffs [0,1] [0,1]" (* x * x = [0,0,1] = x^2 *)
+value "mult_coeffs [2] [2]"       (* 2 * 2 = [4] = 4 *)
+value "mult_coeffs [2] [0,1]"     (* 2 * x = [0,2] = 2 x *)
+value "mult_coeffs [0,1] [0,1]"   (* x * x = [0,0,1] = x^2 *)
 value "mult_coeffs [0,1] [0,0,1]" (* x * (x * x) = [0,0,0,1] = x^3 *)
-value "mult_coeffs [1,1] [1,1]" (* (x+1) * (x+1) = [1,2,1] = 1 + 2x + x^2 *)
+value "mult_coeffs [1,1] [1,1]"   (* (x+1) * (x+1) = [1,2,1] = 1 + 2x + x^2 *)
+
+(* TODO: Prove this. *)
+lemma evalp'_mult_coeffs [simp]: "xs \<noteq> [] \<Longrightarrow> ys \<noteq> [] \<Longrightarrow> evalp' 0 (mult_coeffs xs ys) x = evalp' 0 xs x * evalp' 0 ys x"
+  apply (induct xs ys rule: list_induct2') 
+  apply (auto simp add: algebra_simps Let_def)
+  done
+
+value "evalp' 0 (mult_coeffs [1,2,3] [1,2,3,4,5]) 7 = evalp' 0 [1,2,3] 7 * evalp' 0 [1,2,3,4,5] 7"
+
+(*
+NOTE: Alternative (more complex) implementation of mult_coeffs. Not used.
+
+fun add_index :: "int list \<Rightarrow> (nat \<times> int) list" where
+"add_index l = zip [0..<length l] l"
+
+value "add_index [1,2,3,4]" (* [(0,1), (1,2), (2,3), (3,4)] *)
+*)
+
+(* NOTE: The warning "The following clauses are redundant (covered by preceding clauses):" can be
+   safely be ignored. *)
+(*
+fun mult_coeffs :: "int list \<Rightarrow> int list \<Rightarrow> int list" where
+"mult_coeffs xs ys = 
+  (let 
+    xs' = add_index xs;
+    ys' = add_index ys;
+    zs  = [(i + j, x * y) . (i, x) \<leftarrow> xs', (j, y) \<leftarrow> ys'];
+    n   = Max (set [k. (k, _) \<leftarrow> zs]);
+    zs' = [(i, \<Sum> p \<leftarrow> [(j, _) \<leftarrow> zs . j = i] . snd p) . i \<leftarrow> [0..<n+1]]
+  in map snd zs')"
+
+value "mult_coeffs [1, 2, 1, 3]  [2, 0, 1]"
+*)
 
 fun coeffs :: "exp \<Rightarrow> int list" where
 "coeffs Var         = [0, 1]" | (* x *)
@@ -204,43 +219,10 @@ value "coeffs (Mult (Mult (Const 2) Var) (Add Var (Const 1)))"
 (* 5(x - 1)(x^2 + x + 1) = [-5,0,0,5]  = 5x^3 - 5 *)
 value "coeffs (Mult (Const 5) (Mult (Add Var (Const (-1))) (Add (Add (Mult Var Var) Var) (Const 1))))" 
 
-(* NOTE: I needed simultaneous induction here, had to Google a little bit to discover it. *)
-lemma evalp'_add_coeffs [simp]: "evalp' n (add_coeffs cs1 cs2) x = evalp' n cs1 x + evalp' n cs2 x"
-  apply (induction cs1 cs2 arbitrary: n rule: add_coeffs.induct)
-  apply (auto simp add: algebra_simps)
-  done
-
-(*
-lemma evalp'_mult_coeffs [simp]: "evalp' 0 (mult_coeffs cs1 cs2) x = evalp' 0 cs1 x * evalp' 0 cs2 x"
-  apply (induction cs1 arbitrary: cs2)
-  apply (auto simp add: Let_def algebra_simps)
-  done
-*)
-
-lemma evalp'_mult_coeffs [simp]: "cs1 \<noteq> [] \<Longrightarrow> cs2 \<noteq> [] \<Longrightarrow> evalp' 0 (mult_coeffs cs1 cs2) x = evalp' 0 cs1 x * evalp' 0 cs2 x"
-  (* apply (auto simp add: Let_def algebra_simps ) *)
-  (* apply (auto simp add: Let_def) *)
-  apply (induct cs1 arbitrary: cs2)
-  apply (case_tac cs2, simp add: Let_def, force)
-  apply (case_tac cs2, force, simp add: Let_def)
-  done
-
-value "evalp' 0 (add_coeffs [1,2,3] [1,2,3,4,5]) 7 = evalp' 0 [1,2,3] 7 + evalp' 0 [1,2,3,4,5] 7"
-value "evalp' 0 (mult_coeffs [1,2,3] [1,2,3,4,5]) 7 = evalp' 0 [1,2,3] 7 * evalp' 0 [1,2,3,4,5] 7"
-
+(* TODO: Prove either evalp'_mult_coeffs or evalp'_mult_coeffs'. *)
 theorem coeffs_preserves_value: "evalp (coeffs e) x = eval e x"
   apply (induction e rule: exp.induct)
-  apply (auto simp add: Let_def algebra_simps)
+  apply (auto simp add: algebra_simps Let_def)
   done
-
-lemma 
-  assumes "\<And>x x1 x2a. evalp' 0
-        (mult_coeffs' (length (coeffs x1) + length (coeffs x2a) - Suc 0) (length (coeffs x1) + length (coeffs x2a) - Suc 0)
-          (coeffs x1 @ replicate (length (coeffs x2a) - Suc 0) 0) (coeffs x2a @ replicate (length (coeffs x1) - Suc 0) 0))
-        x = evalp' 0 (coeffs x1) x * evalp' 0 (coeffs x2a) x"
-  shows "evalp (coeffs e) x = eval e x"
-  using assms by (induct e rule: exp.induct) (simp_all add: algebra_simps add: nat.split add: Let_def)
-
-value "set [1::nat,1]"
 
 end
