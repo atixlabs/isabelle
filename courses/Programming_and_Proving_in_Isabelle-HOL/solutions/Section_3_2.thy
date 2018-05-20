@@ -21,7 +21,7 @@ fun ord :: "int tree \<Rightarrow> bool" where
 "ord Tip          = True" |
 (* NOTE: I will not use Max and Min since I would need to search for lemmas about them. *)
 (* "ord (Node l x r) = (x = Max (set l \<union> {x}) \<and> x = Min (set r \<union> {x}) \<and> ord l \<and> ord r)" *)
-"ord (Node l x r) = ((all (\<lambda>y.(y < x)) l) \<and> (all (\<lambda>y.(y > x)) r) \<and> ord l \<and> ord r)"
+"ord (Node l x r) = ((all (op > x) l) \<and> (all (op < x) r) \<and> ord l \<and> ord r)"
 
 value "ord (Node (Node Tip 0 Tip) 1 (Node Tip 0 Tip))"
 value "ord (Node (Node Tip 0 Tip) 1 (Node Tip 2 Tip))"
@@ -39,24 +39,30 @@ fun ins :: "int \<Rightarrow> int tree \<Rightarrow> int tree" where
 value "ins (-1) (ins 1 (ins 10 (ins 20 (ins 0 (ins 3 (ins 2 (ins 1 Tip)))))))"
 
 (* Auxiliary lemma: If y is the greatest element in t and x < y then inserting x in t doesn't change that. *)
-lemma all_01 [simp]: "x < y \<Longrightarrow> all (\<lambda>z.(z < y)) t \<Longrightarrow> all (\<lambda>z.(z < y)) (ins x t)"
-  apply (induction t rule: tree.induct)
+lemma all_01 [simp]: "x < y \<Longrightarrow> all (op > y) t \<Longrightarrow> all (op > y) (ins x t)"
+  apply (induction t)
   apply auto
   done
 
 (* Auxiliary lemma: If y is the least element in t and x > y then inserting x in t doesn't change that. *)
-lemma all_02 [simp]: "x > y \<Longrightarrow> all (\<lambda>z.(z > y)) t \<Longrightarrow> all (\<lambda>z.(z > y)) (ins x t)"
-  apply (induction t rule: tree.induct)
+lemma all_02 [simp]: "x > y \<Longrightarrow> all (op < y) t \<Longrightarrow> all (op < y) (ins x t)"
+  apply (induction t)
+  apply auto
+  done
+
+(* Auxiliary lemma: ins inserts the given element. *)
+lemma ins_inserts_element [simp]: "set (ins x t) = {x} \<union> set t"
+  apply (induction t)
   apply auto
   done
 
 (* Auxiliary lemma: ins preserves order. *)
-lemma ins_preserves_order [simp]: "ord t \<Longrightarrow> ord (ins x t)"
-  apply (induction t rule: ins.induct)
+lemma ins_preserves_order [simp]: "ord t \<longrightarrow> ord (ins x t)"
+  apply (induction t)
   apply auto
   done
 
-theorem ins_correctness: "set (ins x t) = {x} \<union> set t \<and> ord t \<Longrightarrow> ord (ins x t)"
+theorem ins_correctness: "set (ins x t) = {x} \<union> set t \<and> (ord t \<longrightarrow> ord (ins x t))"
   apply auto
   done
 
