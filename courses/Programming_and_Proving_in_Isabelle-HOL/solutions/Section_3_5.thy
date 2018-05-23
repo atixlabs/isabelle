@@ -33,5 +33,43 @@ theorem rev_pal_is_pal: "palindrome xs \<Longrightarrow> palindrome (rev xs)"
   done
 
 
+(* Exercise 3.3 *)
+
+inductive star :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" for r where
+refl: "star r x x" |
+step: "r x y \<Longrightarrow> star r y z \<Longrightarrow> star r x z"
+
+lemma rel_imp_star: "r x y \<Longrightarrow> star r x y"
+  apply (auto simp add: step refl)
+  done
+
+lemma star_flip_step: "star r x y \<Longrightarrow> r y z \<Longrightarrow> star r x z"
+  apply (induction rule: star.induct)
+  apply (auto simp add: rel_imp_star star.step)
+  done
+
+inductive star' :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" for r where
+refl': "star' r x x" |
+step': "star' r x y \<Longrightarrow> r y z \<Longrightarrow> star' r x z"
+
+(* NOTE: The sledgehammer method suggested the "meson" method... What is that?  *)
+lemma rel_imp_star': "r x y \<Longrightarrow> star' r x y"
+  apply (meson step' refl')
+  done
+
+lemma star'_flip_step: "star' r y z \<Longrightarrow> r x y \<Longrightarrow> star' r x z"
+  apply (induction rule: star'.induct)
+  apply (auto simp add: rel_imp_star' step')
+  done
+
+theorem star'_star_equiv: "star' r x y \<Longrightarrow> star r x y"
+  apply (induction rule: star'.induct)
+  apply (auto simp add: refl star_flip_step)
+  done
+
+theorem star_star'_equiv: "star r x y \<Longrightarrow> star' r x y"
+  apply (induction rule: star.induct)
+  apply (auto simp add: refl' star'_star_equiv star'_flip_step)
+  done
 
 end
