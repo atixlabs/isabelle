@@ -81,6 +81,11 @@ fun eval :: "exp \<Rightarrow> int \<Rightarrow> int" where
 
 value "eval (Mult (Add Var (Const 1)) Var) 2" (* eval ((v + 1) * v) 2 = 6 *)
 
+(* NOTE: I could have used Horner-scheme here in order to avoid the auxiliary function evalp':  
+fun evalp :: "int list \<Rightarrow> int \<Rightarrow> int" where
+  "evalp [] x = 0" |
+  "evalp (a # as) x = a + x * evalp as x"
+*)
 fun evalp' :: "nat \<Rightarrow> int list \<Rightarrow> int \<Rightarrow> int" where
 "evalp' _ []     _ = 0" |
 "evalp' k (c#cs) x = c*x^k + evalp' (k+1) cs x"
@@ -101,6 +106,9 @@ lemma evalp'_replicate_01 [simp]: "evalp' n (replicate n 0) x = 0"
   done
 
 (* TODO: I needed to use nested induction here. Is there any simpler method to prove this? *)
+(* Wolfgang's answer: I guess you need nested induction, since this lemma covers two things: the 
+   shifting of coefficients (via inserting zeros at the beginning) and the multiplication of 
+   coefficients with a constant. *) (* TODO: Separate in two lemmas. *)
 lemma evalp'_replicate_02 [simp]: "evalp' n (replicate n 0 @ map (op * a) ys) x = a * (x ^ n * evalp' n ys x)"
   apply (induction n)
   apply (induction ys arbitrary: n)
@@ -129,7 +137,7 @@ value "evalp' 0 (add_coeffs [1,2,3] [1,2,3,4,5]) 7 = evalp' 0 [1,2,3] 7 + evalp'
 (* TODO: I needed simultaneous induction here, had to Google a little bit in order to discover it. 
          Can this be proved using a simpler method? *)
 lemma evalp'_add_coeffs [simp]: "evalp' n (add_coeffs xs ys) x = evalp' n xs x + evalp' n ys x"
-  apply (induction xs ys rule: add_coeffs.induct)
+  apply (induction rule: add_coeffs.induct)
   apply (auto simp add: algebra_simps)
   done
 
