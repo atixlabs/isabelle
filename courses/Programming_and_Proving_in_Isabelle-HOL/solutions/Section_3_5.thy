@@ -29,7 +29,7 @@ lemma test4: "palindrome (1 # [1] @ [1])"
 
 theorem rev_pal_is_pal: "palindrome xs \<Longrightarrow> palindrome (rev xs)"
   apply (induction rule: palindrome.induct)
-  apply (auto simp add: palEmpt palSing palStep)
+  apply (auto simp add: palindrome.intros)
   done
 
 
@@ -62,14 +62,49 @@ lemma star'_flip_step: "star' r y z \<Longrightarrow> r x y \<Longrightarrow> st
   apply (auto simp add: rel_imp_star' step')
   done
 
-theorem star'_star_equiv: "star' r x y \<Longrightarrow> star r x y"
+theorem star'_imp_star: "star' r x y \<Longrightarrow> star r x y"
   apply (induction rule: star'.induct)
   apply (auto simp add: refl star_flip_step)
   done
 
-theorem star_star'_equiv: "star r x y \<Longrightarrow> star' r x y"
+theorem star_imp_star': "star r x y \<Longrightarrow> star' r x y"
   apply (induction rule: star.induct)
-  apply (auto simp add: refl' star'_star_equiv star'_flip_step)
+  apply (auto simp add: refl' star'_imp_star star'_flip_step)
+  done
+
+
+(* Exercise 3.4 *)
+
+inductive iter :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> nat \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" for r where
+iter0: "iter r 0 x x" |
+iter1: "r x y \<Longrightarrow> iter r (Suc 0) x y" |
+itern: "iter r n x y \<Longrightarrow> r y z \<Longrightarrow> iter r (Suc n) x z"
+
+(* NOTE: Some sample tests of proofs using the inductive definition. *)
+
+(* 0 R^0 0  *)
+lemma "iter r 0 0 0" 
+  by (rule iter0)
+
+(* 0 R^1 1  *)
+lemma "r 0 1 \<and> r 1 2 \<Longrightarrow> iter r (Suc 0) 0 1" 
+  by (rule iter1) auto
+
+(* 0 R^1 2 *)
+lemma "r 0 1 \<and> r 1 2 \<Longrightarrow> iter r (Suc (Suc 0)) 0 2" 
+  by (rule itern [OF iter1]) auto
+
+lemma iter_step: "iter r n y z \<Longrightarrow> r x y \<Longrightarrow> \<exists>n. iter r n x z"
+  apply (induction rule: iter.induct)
+  apply (auto intro: iter.intros)
+  done
+
+(* NOTE: The intended meaning of the claim is "x R^* y \<Longrightarrow> x R^n y for some n", more formally 
+   "x R^* y \<Longrightarrow> (\<exists>n. x R^n y)". However in "star r x y \<Longrightarrow> iter r n x y", n is a free variable,
+   so the correct claim is: "star r x y \<Longrightarrow> (\<exists>n. iter r n x y)". *)
+theorem star_imp_iter: "star r x y \<Longrightarrow> (\<exists>n. iter r n x y)"
+  apply (induction rule: star.induct)
+  apply (auto simp add: iter_step intro: iter.intros)
   done
 
 end
