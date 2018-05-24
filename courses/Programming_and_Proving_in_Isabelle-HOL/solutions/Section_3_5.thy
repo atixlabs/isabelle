@@ -107,4 +107,106 @@ theorem star_imp_iter: "star r x y \<Longrightarrow> (\<exists>n. iter r n x y)"
   apply (auto simp add: iter_step intro: iter.intros)
   done
 
+
+(* Exercise 3.5 *)
+
+datatype alpha = a | b  (* | ... *)
+
+(* Grammar 1 *)
+inductive S :: "alpha list \<Rightarrow> bool" where
+empS: "S []" |
+expS: "S w \<Longrightarrow> S (a # w @ [b])" |
+dupS: "S w \<Longrightarrow> S w' \<Longrightarrow> S (w @ w')"
+
+(* \<epsilon> \<in> \<L>(S) *)
+lemma "S []" by (simp add: empS)
+
+(* ab \<in> \<L>(S) *)
+lemma test2S: "S (a # [] @ [b])"
+  apply (rule expS[OF empS])
+  done
+
+lemma test2S': "S [a,b]" (* A variant of test2S *)
+ by (metis S.simps append_Nil)
+
+(* abab \<in> \<L>(S) *)
+lemma "S ((a # [] @ [b]) @ (a # [] @ [b]))"
+  apply (rule dupS[OF test2S test2S])
+  done
+
+(* Grammar 2 *)
+inductive T :: "alpha list \<Rightarrow> bool" where
+empT: "T []" |
+expT: "T w \<Longrightarrow> T w' \<Longrightarrow> T (w @ [a] @ w' @ [b])"
+
+(* \<epsilon> \<in> \<L>(T) *)
+lemma "T []" by (simp add: empT)
+
+(* ab \<in> \<L>(T) *)
+lemma test2T: "T ([] @ [a] @ [] @ [b])"
+  apply (rule expT[OF empT empT])
+  done
+
+(* abab \<in> \<L>(T) *)
+lemma "T ((([] @ [a] @ [] @ [b]) @ [a] @ [] @ [b]))"
+  apply (rule expT[OF expT[OF empT empT] empT])
+  done
+
+theorem T_imp_S: "T w \<Longrightarrow> S w"
+  apply (induction rule: T.induct)
+  apply (auto intro: S.intros T.intros)
+  done
+
+lemma T_sim_expS: "T w \<Longrightarrow> T (a # w @ [b])"
+  using empT expT by fastforce
+
+lemma lem1: "T w \<Longrightarrow> T (w @ [])"  
+  apply (auto simp add: empT expT)
+  done
+
+lemma lem2: "T w \<Longrightarrow> w \<noteq> [] \<Longrightarrow> (\<exists>w'. w = a # w' @ [b] \<and> T w')"
+  apply (induction rule: T.induct)
+  apply (auto)
+  done
+
+lemma T_sim_dupS: "T w \<Longrightarrow> T w' \<Longrightarrow> T (w @ w')"  
+  apply (induction rule: T.induct)
+  apply (auto simp add: empT expT)
+  done
+
+(*
+
+Proof sketch:
+
+First I need the following lemma:  "w \<noteq> [] \<Longrightarrow> T w \<Longrightarrow> (\<exists>w'. w = a # w' @ [b] \<and> T w')". Then by 
+case analysis:
+
+Case w' \<noteq> []: By lemma and hypothesis (i.e. w' \<noteq> [] and T w'), it holds that \<exists>w''. w = a # w'' @ [b] \<and> T w''.
+So, 
+  T (w @ w') 
+    = 
+      T (w @ a # w'' @ [b])
+    = (list properties)
+      T (w @ [a] @ w'' @ [b])
+    = (by expT since T w and T w'')
+      True
+
+Case w' = []: It holds that 
+  T (w @ w') 
+    = (hypothesis w' = [] and xs @ [] = xs)
+      T w
+    = (hypotesis T w)
+      True
+
+*)
+
+theorem S_imp_T: "S w \<Longrightarrow> T w"
+  apply (induction rule: S.induct)
+  apply (auto simp add: T_imp_S T_sim_expS intro: S.intros T.intros)
+  done
+
 end
+
+
+
+
