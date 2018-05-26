@@ -75,6 +75,7 @@ theorem star_imp_star': "star r x y \<Longrightarrow> star' r x y"
 
 (* Exercise 3.4 *)
 
+(* FIXME: iter1 is not needed since it's itern[OF iter0] *)
 inductive iter :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> nat \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" for r where
 iter0: "iter r 0 x x" |
 iter1: "r x y \<Longrightarrow> iter r (Suc 0) x y" |
@@ -119,7 +120,7 @@ expS: "S w \<Longrightarrow> S (a # w @ [b])" |
 dupS: "S w \<Longrightarrow> S w' \<Longrightarrow> S (w @ w')"
 
 (* \<epsilon> \<in> \<L>(S) *)
-lemma "S []" by (simp add: empS)
+lemma "S []" by (rule empS)
 
 (* ab \<in> \<L>(S) *)
 lemma test2S: "S (a # [] @ [b])"
@@ -140,7 +141,7 @@ empT: "T []" |
 expT: "T w \<Longrightarrow> T w' \<Longrightarrow> T (w @ [a] @ w' @ [b])"
 
 (* \<epsilon> \<in> \<L>(T) *)
-lemma "T []" by (simp add: empT)
+lemma "T []" by (rule empT)
 
 (* ab \<in> \<L>(T) *)
 lemma test2T: "T ([] @ [a] @ [] @ [b])"
@@ -154,59 +155,23 @@ lemma "T ((([] @ [a] @ [] @ [b]) @ [a] @ [] @ [b]))"
 
 theorem T_imp_S: "T w \<Longrightarrow> S w"
   apply (induction rule: T.induct)
-  apply (auto intro: S.intros T.intros)
+  apply (auto intro: S.intros)
   done
 
+(* Auxiliary lemma stating that T can simulate production S \<longrightarrow> aSb *)
 lemma T_sim_expS: "T w \<Longrightarrow> T (a # w @ [b])"
   using empT expT by fastforce
 
-lemma lem1: "T w \<Longrightarrow> T (w @ [])"  
-  apply (auto simp add: empT expT)
-  done
-
-lemma lem2: "T w \<Longrightarrow> w \<noteq> [] \<Longrightarrow> (\<exists>w'. w = a # w' @ [b] \<and> T w')"
+(* Auxiliary lemma stating that T can simulate production S \<longrightarrow> SS *)
+lemma T_sim_dupS: "T w \<Longrightarrow> T w' \<Longrightarrow> T (w' @ w)"  
   apply (induction rule: T.induct)
-  apply (auto)
-  done
-
-lemma T_sim_dupS: "T w \<Longrightarrow> T w' \<Longrightarrow> T (w @ w')"  
-  apply (induction rule: T.induct)
-  apply (auto simp add: empT expT)
-  done
-
-(*
-
-Proof sketch:
-
-First I need the following lemma:  "w \<noteq> [] \<Longrightarrow> T w \<Longrightarrow> (\<exists>w'. w = a # w' @ [b] \<and> T w')". Then by 
-case analysis:
-
-Case w' \<noteq> []: By lemma and hypothesis (i.e. w' \<noteq> [] and T w'), it holds that \<exists>w''. w = a # w'' @ [b] \<and> T w''.
-So, 
-  T (w @ w') 
-    = 
-      T (w @ a # w'' @ [b])
-    = (list properties)
-      T (w @ [a] @ w'' @ [b])
-    = (by expT since T w and T w'')
-      True
-
-Case w' = []: It holds that 
-  T (w @ w') 
-    = (hypothesis w' = [] and xs @ [] = xs)
-      T w
-    = (hypotesis T w)
-      True
-
-*)
+  apply fastforce
+  by (metis T.simps append.assoc)
 
 theorem S_imp_T: "S w \<Longrightarrow> T w"
   apply (induction rule: S.induct)
-  apply (auto simp add: T_imp_S T_sim_expS intro: S.intros T.intros)
-  done
+  apply (simp add: empT)
+  apply (blast intro: T_sim_expS)
+  by (simp add: T_sim_dupS)
 
 end
-
-
-
-
