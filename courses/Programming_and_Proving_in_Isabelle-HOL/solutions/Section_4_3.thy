@@ -36,24 +36,26 @@ lemma "(\<exists> ys zs. xs = ys @ zs \<and> length ys = length zs)
 proof (cases "even (length xs)")
   case True
   assume e: "even (length xs)"
-  have "length (take (length xs div 2) xs) = length xs div 2" by auto
-  moreover have "length (drop (length xs div 2) xs) = length xs div 2" using e
+  let ?n = "length xs div 2"
+  let ?ys = "take ?n xs"
+  let ?zs = "drop ?n xs"
+  have "length ?ys = ?n" by auto
+  moreover have "length ?zs = ?n" using e
     by (metis add_diff_cancel_right' dvd_mult_div_cancel length_drop mult_2)
-  moreover have "xs = take (length xs div 2) xs @ drop (length xs div 2) xs" by simp
-  moreover have "xs = take (length xs div 2) xs @ drop (length xs div 2) xs 
-          \<and> length (take (length xs div 2) xs) = length (drop (length xs div 2) xs)"
-    using calculation(1) calculation(2) calculation(3) by linarith 
-  ultimately show ?thesis by blast
+  moreover have "xs = ?ys @ ?zs" by simp
+  ultimately have "xs = ?ys @ ?zs \<and> length ?ys = length ?zs" by linarith
+  then show ?thesis by blast
 next
   case False
   assume o: "odd (length xs)"
-  have "length (take (length xs div 2 + 1) xs) = length xs div 2 + 1" 
-    by (metis (no_types, lifting) Divides.div_mult2_eq dvd_mult_div_cancel le_add2 left_add_mult_distrib length_take min.absorb2 mult_2 nat_1_add_1 o odd_two_times_div_two_succ one_add_one one_dvd) 
-  moreover have "length (drop (length xs div 2 + 1) xs) = length xs div 2" using o
+  let ?n = "length xs div 2 + 1"
+  let ?ys = "take ?n xs"
+  let ?zs = "drop ?n xs"
+  have "length ?ys = ?n" using o
+    by (metis (no_types, lifting) Divides.div_mult2_eq dvd_mult_div_cancel le_add2 left_add_mult_distrib length_take min.absorb2 mult_2 nat_1_add_1 odd_two_times_div_two_succ one_add_one one_dvd) 
+  moreover have "length ?zs = ?n - 1" using o
     by (metis (no_types, lifting) Suc_eq_plus1 add_Suc_right add_diff_cancel_right' length_drop mult_2 odd_two_times_div_two_succ)
-  moreover have "xs = take (length xs div 2 + 1) xs @ drop (length xs div 2 + 1) xs" by simp
-  moreover have "xs = take (length xs div 2 + 1) xs @ drop (length xs div 2 + 1) xs 
-          \<and> length (take (length xs div 2 + 1) xs) = length (drop (length xs div 2 + 1) xs) + 1"
-  using calculation(1) calculation(2) calculation(3) by linarith 
-  ultimately show ?thesis by blast
+  moreover have "xs = ?ys @ ?zs" by simp
+  ultimately have "xs = ?ys @ ?zs \<and> length ?ys = length ?zs + 1" by linarith 
+  then show ?thesis by blast
 qed
