@@ -34,8 +34,7 @@ qed
 lemma "(\<exists> ys zs. xs = ys @ zs \<and> length ys = length zs)
      \<or> (\<exists> ys zs. xs = ys @ zs \<and> length ys = length zs + 1)"
 proof (cases "even (length xs)")
-  case True
-  assume e: "even (length xs)"
+  case e: True
   let ?n = "length xs div 2"
   let ?ys = "take ?n xs"
   let ?zs = "drop ?n xs"
@@ -46,8 +45,7 @@ proof (cases "even (length xs)")
   ultimately have "xs = ?ys @ ?zs \<and> length ?ys = length ?zs" by linarith
   then show ?thesis by blast
 next
-  case False
-  assume o: "odd (length xs)"
+  case o: False
   let ?n = "length xs div 2 + 1"
   let ?ys = "take ?n xs"
   let ?zs = "drop ?n xs"
