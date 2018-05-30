@@ -1,5 +1,5 @@
 theory Section_4_4
-imports Main
+imports Section_3_5
 begin
 
 (* Exercise 4.3 *)
@@ -43,6 +43,22 @@ proof
     (* Case ev0 is impossible, so it's not proven. *)
     case evSS then show False using ev.cases by auto 
   qed
+qed
+
+
+(* Exercise 4.5 *)
+
+lemma 
+  assumes "iter r n x y" 
+  shows "star r x y"
+  using assms
+proof (induction rule: iter.induct)
+  case (iter_refl x)
+  then show ?case by (simp add: refl)
+next
+  case (iter_step n x y z)
+  (* NOTE: The key here is to use lemma star_flip_step from Exercise 3.3. *)
+  then show ?case using iter_step.IH and iter_step.hyps(2) by (simp add: star_flip_step) 
 qed
 
 end
