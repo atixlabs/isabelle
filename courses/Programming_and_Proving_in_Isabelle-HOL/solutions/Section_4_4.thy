@@ -92,4 +92,61 @@ next
   qed
 qed
 
+
+(* Exercise 4.7 *)
+
+fun balanced :: "nat \<Rightarrow> alpha list \<Rightarrow> bool" where
+"balanced 0       []     = True" |
+"balanced n       (a#xs) = balanced (Suc n) xs" |
+"balanced (Suc n) (b#xs) = balanced n xs" |
+"balanced _        _     = False"
+
+value "balanced 0 [] = True"
+value "balanced 0 [a] = False"
+value "balanced 0 [b] = False"
+value "balanced 0 [a,a] = False"
+value "balanced 0 [b,b] = False"
+value "balanced 0 [b,a] = False"
+value "balanced 0 [a,b] = True"
+value "balanced 0 [a,a,b,b] = True"
+value "balanced 0 [a,a,b] = False"
+value "balanced 0 [b,b,a,a] = False"
+value "balanced 0 [b,a,b,a] = False"
+value "balanced 0 [a,b,a,b] = True"
+value "balanced 0 [a,b,b,a] = False"
+value "balanced 1 [b] = True"
+value "balanced 1 [a,a,b,b,b] = True"
+value "balanced 1 [a,b,b] = True"
+value "balanced 1 [a,b,a,b,b] = True"
+
+(*
+lemma "S(replicate n a @ w) \<Longrightarrow> balanced n w"
+proof (induction rule: S.induct)
+ 1. balanced n w
+ 2. \<And>wa. S wa \<Longrightarrow> balanced n w \<Longrightarrow> balanced n w
+ 3. \<And>wa w'. S wa \<Longrightarrow> balanced n w \<Longrightarrow> S w' \<Longrightarrow> balanced n w \<Longrightarrow> balanced n w 
+*)
+
+(* Ideas: Induction on n, w, S.induct, or balanced.induct. *)
+lemma "balanced n w = S(replicate n a @ w)"
+(*
+proof (induction n arbitrary: w)
+ 1. \<And>w. balanced 0 w = S (replicate 0 a @ w)
+ 2. \<And>n w. (\<And>w. balanced n w = S (replicate n a @ w)) \<Longrightarrow> balanced (Suc n) w = S (replicate (Suc n) a @ w) 
+
+proof (induction w arbitrary: n)
+ 1. \<And>n. balanced n [] = S (replicate n a @ [])
+ 2. \<And>aa w n. (\<And>n. balanced n w = S (replicate n a @ w)) \<Longrightarrow> balanced n (aa # w) = S (replicate n a @ aa # w) 
+
+proof (induction rule: balanced.induct)
+ 1. balanced 0 w = S []
+ 2. \<And>n xs. balanced (Suc n) w = S xs \<Longrightarrow> balanced n w = S (a # xs)
+ 3. \<And>n xs. balanced n w = S xs \<Longrightarrow> balanced (Suc n) w = S (b # xs)
+ 4. \<And>v. balanced (Suc v) w = S []
+ 5. \<And>va. balanced 0 w = S (b # va) 
+*)
+proof -
+  show ?thesis sorry
+qed
+
 end
