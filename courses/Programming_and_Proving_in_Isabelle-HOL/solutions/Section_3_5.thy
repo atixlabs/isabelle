@@ -75,25 +75,23 @@ theorem star_imp_star': "star r x y \<Longrightarrow> star' r x y"
 
 (* Exercise 3.4 *)
 
-(* FIXME: iter1 is not needed since it's itern[OF iter0] *)
 inductive iter :: "('a \<Rightarrow> 'a \<Rightarrow> bool) \<Rightarrow> nat \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" for r where
-iter0: "iter r 0 x x" |
-iter1: "r x y \<Longrightarrow> iter r (Suc 0) x y" |
-itern: "iter r n x y \<Longrightarrow> r y z \<Longrightarrow> iter r (Suc n) x z"
+iter_refl: "iter r 0 x x" |
+iter_step: "iter r n x y \<Longrightarrow> r y z \<Longrightarrow> iter r (Suc n) x z"
 
 (* NOTE: Some sample tests of proofs using the inductive definition. *)
 
 (* 0 R^0 0  *)
 lemma "iter r 0 0 0" 
-  by (rule iter0)
+  by (rule iter_refl)
 
 (* 0 R^1 1  *)
 lemma "r 0 1 \<and> r 1 2 \<Longrightarrow> iter r (Suc 0) 0 1" 
-  by (rule iter1) auto
+  by (rule iter_step [OF iter_refl]) auto
 
 (* 0 R^1 2 *)
 lemma "r 0 1 \<and> r 1 2 \<Longrightarrow> iter r (Suc (Suc 0)) 0 2" 
-  by (rule itern [OF iter1]) auto
+  by (rule iter_step [OF iter_step [OF iter_refl]]) auto
 
 lemma iter_step: "iter r n y z \<Longrightarrow> r x y \<Longrightarrow> \<exists>n. iter r n x z"
   apply (induction rule: iter.induct)
