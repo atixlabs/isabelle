@@ -61,4 +61,35 @@ next
   then show ?case using iter_step.IH and iter_step.hyps(2) by (simp add: star_flip_step) 
 qed
 
+
+(* Exercise 4.6 *)
+
+fun elems :: "'a list \<Rightarrow> 'a set" where
+"elems []     = {}" |
+"elems (x#xs) = {x} \<union> elems xs"
+
+value "elems [(1::nat),2,3]" (* {1,2,3} *)
+
+lemma "x \<in> elems xs \<Longrightarrow> \<exists> ys zs. xs = ys @ x # zs \<and> x \<notin> elems ys"
+proof (induction xs rule: elems.induct)
+  case 1
+  then show ?case by simp
+next
+  case (2 a as)
+  then show ?case
+  proof (cases "x = a")
+    case True
+    (* NOTE: The thesis holds for ys = [] and zs = as. *)
+    then have "a # as = [] @ a # as \<and> a \<notin> elems []" by simp 
+    then show ?thesis using `x = a` by blast 
+  next
+    case False
+    then have "x \<in> elems as" using `x \<in> elems (a # as)` and `x \<noteq> a` by simp
+    then have "\<exists>ys zs. as = ys @ x # zs \<and> x \<notin> elems ys" using "2.IH" by simp
+    (* NOTE: The thesis holds for ys' = a # ys and zs' = zs. *)
+    then obtain ys zs where "a # as = (a # ys) @ x # zs \<and> x \<notin> elems ys" by auto
+    then show ?thesis using `x \<noteq> a` by fastforce 
+  qed
+qed
+
 end
