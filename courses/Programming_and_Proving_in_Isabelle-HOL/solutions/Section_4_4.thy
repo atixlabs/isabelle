@@ -32,4 +32,17 @@ next
    then show ?case by (simp add: ev.evSS)
 qed
 
+
+(* Exercise 4.4 *)
+
+lemma "\<not> ev (Suc (Suc (Suc 0)))" 
+proof
+  assume "ev (Suc (Suc (Suc 0)))" 
+  from this show False
+  proof cases 
+    (* Case ev0 is impossible, so it's not proven. *)
+    case evSS then show False using ev.cases by auto 
+  qed
+qed
+
 end
