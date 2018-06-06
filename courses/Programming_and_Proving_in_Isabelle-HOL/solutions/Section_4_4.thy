@@ -122,7 +122,10 @@ value "balanced 1 [a,a,b,b,b] = True"
 value "balanced 1 [a,b,b] = True"
 value "balanced 1 [a,b,a,b,b] = True"
 
-(* NOTE: Auxiliary lemmas *)
+(* NOTE: Required auxiliary lemmas *)
+
+lemma S_ends_with_b: "S w \<Longrightarrow> w \<noteq> [] \<Longrightarrow> last w = b"
+  by (metis S_imp_T T.cases append_is_Nil_conv last_append last_snoc) 
 
 lemma balanced_inj: "balanced n w \<Longrightarrow> balanced m w \<Longrightarrow> n = m"
 proof (induction w arbitrary: n m)
@@ -142,27 +145,59 @@ next
   qed
 qed
 
-lemma S_inj: "S (replicate n a @ w) \<Longrightarrow> S (replicate m a @ w) \<Longrightarrow> n = m"
-proof (induction w arbitrary: n m)
+lemma balanced_concat: "balanced n w \<Longrightarrow> balanced m v \<Longrightarrow> balanced (n + m) (w @ v)"
+proof (induction w arbitrary: n m v)
   case Nil
-  then have "n = 0" using S.empS
-    by (smt Nil_is_append_conv S_imp_T T.cases alpha.distinct(1) last_append last_replicate last_snoc replicate_empty) 
-  moreover have "m = 0" using S.empS
-    by (smt Nil.prems(2) Nil_is_append_conv S_imp_T T.cases alpha.distinct(1) last_append last_replicate last_snoc replicate_empty) 
-  finally show ?case by simp
+  then show ?case using add_eq_if balanced_inj by auto
 next
   case (Cons x xs)
   then show ?case
-  proof (cases x)
-    case a
-    then show ?thesis
-      by (metis Cons_eq_appendI Suc_inject local.Cons(1) local.Cons(2) local.Cons(3) replicate_Suc replicate_app_Cons_same) 
-  next
-    case b then show ?thesis sorry (* TODO: Is this provable? *)
-  qed
+    by (metis add_eq_if append_Cons balanced.elims(2) balanced.simps(2) balanced.simps(3) diff_Suc_1 list.distinct(1) list.inject nat.simps(3))
 qed
 
-lemma lem1: "balanced n w \<Longrightarrow> \<not> balanced n (x#w)"
+lemma balanced_append_closing: "balanced n w \<Longrightarrow> balanced (Suc n) (w @ [b])"
+proof (induction w arbitrary: n)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons x xs)
+  then show ?case 
+    by (smt append_Cons balanced.elims(2) balanced.elims(3) balanced.simps(2) diff_Suc_1 list.inject list.sel(2) list.sel(3) nat.simps(3) not_Cons_self2) 
+qed
+
+(* TODO: Complete the proof. *)
+lemma S_sneak_in: "S (replicate n a @ w) \<Longrightarrow> S (replicate (Suc n) a @ b # w)"
+proof (induction "replicate n a @ w" arbitrary: n w rule: S.induct)
+  case empS
+  then show ?case using test2S' by auto 
+next
+  case (expS w')
+  then show ?case sorry
+next
+  case (dupS w1 w2)
+  then show ?case sorry
+qed
+
+(*
+TODO: Prove this lemma. This should hold since given that "S w1" (i.e. w1 is balanced) and w1 is a prefix of 
+"replicate n a @ w", then w1 should include "replicate n a" and the subsequent substring u such that 
+"replicate n a @ u" is balanced. Graphically, 
+
+   n times          w
+  /-------\ /-------------\
+  a a ... a x1 x2   ...  xm
+            \------/
+               u
+  \----------------/  \----/
+          w1            w2
+
+*)
+lemma S_replicate_prefix: "S w1 \<Longrightarrow> w1 @ w2 = replicate n a @ w \<Longrightarrow> (\<exists>u. w1 = replicate n a @ u \<and> w = u @ w2)" sorry
+
+
+(* NOTE: Other auxiliary lemmas, just for fun :) *)
+
+lemma cons_disbalance: "balanced n w \<Longrightarrow> \<not> balanced n (x#w)"
 proof (induction w)
   case Nil
   then show ?case
@@ -171,16 +206,6 @@ next
   case (Cons x xs)
   then show ?case
     by (metis (full_types) alpha.exhaust balanced.simps(2) balanced.simps(3) balanced_inj) 
-qed
-
-lemma lem2: "S (replicate n a @ w) \<Longrightarrow> \<not> S (replicate n a @ (x#w))"
-proof (induction w)
-  case Nil
-  then show ?case
-    by (metis S_imp_T T.simps alpha.distinct(1) append_Cons append_assoc replicate_append_same snoc_eq_iff_butlast) 
-next
-  case (Cons x xs)
-  then show ?case sorry (* TODO: Is this provable? *)
 qed
 
 lemma balanced_starts_with_a: "w \<noteq> [] \<Longrightarrow> balanced 0 w \<Longrightarrow> hd w = a"
@@ -195,114 +220,62 @@ next
   then show ?case by (smt balanced.elims(2) balanced.simps(4) last_ConsL last_ConsR list.sel(3)) 
 qed
 
-lemma S_starts_with_a: "S w \<Longrightarrow> w \<noteq> [] \<Longrightarrow> hd w = a" sorry (* TODO: Prove it (by rule inversion?) *)
 
-lemma S_ends_with_b: "S w \<Longrightarrow> w \<noteq> [] \<Longrightarrow> last w = b"
-  by (metis S_imp_T T.cases append_is_Nil_conv last_append last_snoc) 
-
-lemma lem3: "length w = 1 \<Longrightarrow> \<not> balanced 0 w"
-  by (metis One_nat_def Suc_length_conv balanced.simps(1) lem1 length_0_conv)
-
-lemma lem4: "length w = 1 \<Longrightarrow> \<not> S w"
-  by (metis One_nat_def S_ends_with_b S_starts_with_a Suc_length_conv balanced.simps(1) balanced.simps(2) balanced.simps(3) balanced.simps(4) last_ConsL length_0_conv list.sel(1))
-
-lemma lem5: "length w > 1 \<Longrightarrow> (\<exists>w'. w = a # w' @ [b] \<and> balanced 0 w') \<Longrightarrow> balanced 0 w" sorry (* TODO: Prove it *)
-
-lemma lem6: "length w > 1 \<Longrightarrow> balanced 0 w \<Longrightarrow> (\<exists>w'. w = a # w' @ [b])" sorry (* w' may not be balanced, e.g. [b,a] *)
-
-lemma lem7: "balanced n w \<Longrightarrow> S (replicate (Suc n) a @ (w @ [b]))" sorry (* TODO: Prove it *)
-
-lemma lem8: "S (replicate n a @ (w @ [b])) \<Longrightarrow> balanced n (w @ [b])" sorry (* TODO: Prove it *)
-
-(* Main theorem *)
-
-(* NOTE: A first attempt at proving the equality directly. *)
-theorem bal_eq_S: "balanced n w = S (replicate n a @ w)"
-proof (induction n arbitrary: w)
-  case 0
-  then show ?case
-  proof (induction w)
-    case Nil
-    then show ?case using empS by simp
-  next
-    case (Cons x xs)
-    then show ?case 
-    proof (cases "balanced 0 xs")
-      case True
-      then show ?thesis using Cons.IH lem1 lem2 by blast 
-    next
-      case False
-      then show ?thesis sorry (* TODO: Is this provable? *)
-    qed
-  qed
-next
-  case (Suc n)
-  then show ?case
-  proof (cases w)
-    case Nil
-    then show ?thesis
-      by (metis Suc.IH append_Nil2 balanced.simps(2) replicate_Suc replicate_append_same) 
-  next
-    case (Cons x xs)
-    then show ?thesis
-      by (metis Suc.IH append_Cons balanced.simps(2) replicate_Suc replicate_app_Cons_same) 
-  qed
-qed
-
-(* NOTE: An alternative strategy: Proving the double implication. *)
-theorem bal_imp_S: "balanced 0 w \<Longrightarrow> S (replicate 0 a @ w)"
-proof (induction w)
-  case Nil
-  then show ?case by (simp add: empS) 
-next
-  case (Cons x xs)
-  then show ?case
-  proof (cases "xs = []")
-    case True
-    then show ?thesis using Cons.prems lem1 by auto 
-  next
-    case False
-    then show ?thesis sorry (* TODO: Is this provable? *)
-  qed
-qed
+(* Main theorems *)
 
 theorem "S (replicate n a @ w) \<Longrightarrow> balanced n w"
-proof (induction "replicate n a @ w" arbitrary: w rule: S.induct)
-case empS
-  then show ?case
-    by auto 
+proof (induction "replicate n a @ w" arbitrary: n w rule: S.induct)
+  case empS
+  then show ?case by auto 
 next
-case (expS w)
-then show ?case
-  by (metis (no_types, lifting) Nil_is_append_conv S.expS alpha.distinct(1) append_butlast_last_id last.simps last_appendR lem8 list.distinct(1) replicate_app_Cons_same) 
+  case (expS w')
+  then have "w \<noteq> []"
+    by (metis S.expS S_ends_with_b alpha.distinct(1) append_Nil2 empty_replicate last_replicate list.distinct(1))  
+  then have "(\<exists>v. w = v @ [b])"
+    by (metis Nil_is_append_conv append_butlast_last_id expS.hyps(3) last.simps last_append last_snoc) 
+  then have "(\<exists>v. a # w' @ [b] = replicate n a @ v @ [b])"
+    by (simp add: expS.hyps(3))
+  then have "(\<exists>v. w' @ [b] = replicate (n - 1) a @ v @ [b])"
+    by (metis append_Cons append_Nil elems.cases list.sel(2) list.sel(3) tl_replicate)
+  then have "(\<exists>v. w' = replicate (n - 1) a @ v)"
+    by simp 
+  then have "(\<exists>v. balanced (n - 1) v)"
+    using expS.hyps(2) by blast
+  then show ?case by (smt Suc_pred' \<open>\<exists>v. w' @ [b] = replicate (n - 1) a @ v @ [b]\<close> append_Cons append_self_conv2 balanced.simps(2) balanced_append_closing butlast_append butlast_snoc list.sel(2) local.expS(2) local.expS(3) not_gr_zero replicate_Suc replicate_empty same_append_eq snoc_eq_iff_butlast tl_replicate)
 next
-  case (dupS w w')
-then show ?case
-  by (smt Cons_replicate_eq Nil_is_append_conv S.dupS S_ends_with_b alpha.distinct(1) append_Cons append_Nil append_butlast_last_id append_self_conv append_self_conv2 last.simps last_appendR last_snoc lem8 less_numeral_extra(3) replicate_app_Cons_same replicate_empty) 
+  case (dupS w1 w2)
+  then have "(\<exists>u. w1 = replicate n a @ u \<and> w = u @ w2)" using S_replicate_prefix by auto 
+  then have "(\<exists>u. balanced n u \<and> w = u @ w2)" using dupS.hyps(2) by blast 
+  moreover have "w2 = replicate 0 a @ w2" by simp
+  then have "balanced 0 w2" using dupS.hyps(4) by auto
+  then have "balanced (n + 0) (u @ w2)" using S_replicate_prefix empS by fastforce 
+  then show ?case using \<open>balanced 0 w2\<close> balanced_concat calculation by force  
 qed
 
-(* NOTE: Another version of bal_imp_S. *)
-lemma 
-  fixes n and w
-  assumes "balanced n w"
-  shows "S (replicate n a @ w)"
-  using assms
-proof (cases w)
+theorem "balanced n w \<Longrightarrow> S (replicate n a @ w)"
+proof (induction w arbitrary: n)
   case Nil
-  then show ?thesis
-    by (metis append_Nil2 assms balanced.simps(1) balanced_inj empS replicate_empty) 
+  then show ?case
+    by (metis S.simps balanced.elims(2) list.simps(3) replicate_empty) 
 next
   case (Cons x xs)
-  then show ?thesis 
-  proof (cases xs)
-    case Nil
-    have "n = 1 \<and> x = b"
-      by (smt One_nat_def alpha.exhaust assms balanced.elims(2) balanced.simps(1) balanced.simps(2) balanced.simps(4) balanced_inj lem1 list.sel(3) local.Cons local.Nil) 
-    then show ?thesis
-      by (simp add: local.Cons local.Nil test2S')
+  then show ?case
+  proof (cases x)
+    case a
+    then have "balanced n (x # xs) = balanced n (a # xs)" by simp
+    also have "... = balanced (Suc n) xs" by simp
+    also have "... = S (replicate (Suc n) a @ xs)"
+      using Cons.IH Cons.prems calculation by blast 
+    finally show ?thesis
+      by (metis Cons.prems a append_Cons replicate_Suc replicate_app_Cons_same) 
   next
-    case (Cons y ys)
-    then show ?thesis sorry (* TODO: Is this provable? *)
+    case b
+    then have "balanced n (x # xs) = balanced n (b # xs)" by simp
+    also have "... = balanced (n - 1) xs"
+      by (metis Cons.prems Suc_pred' alpha.distinct(1) balanced.elims(2) balanced.simps(3) calculation list.inject list.simps(3) zero_less_Suc) 
+    finally have "balanced n (x # xs) = S (replicate (n - 1) a @ xs)" using Cons.IH Cons.prems by auto 
+    then show ?thesis
+      by (metis Cons.prems S_sneak_in Suc_pred' b balanced.simps(5) not_gr_zero) 
   qed
 qed
 
