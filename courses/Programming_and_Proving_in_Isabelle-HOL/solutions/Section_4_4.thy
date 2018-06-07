@@ -145,6 +145,22 @@ next
   qed
 qed
 
+(*
+TODO: Prove this lemma. This should hold since given that "S w1" (i.e. w1 is balanced) and w1 is a prefix of 
+"replicate n a @ w", then w1 should include "replicate n a" and the subsequent substring u such that 
+"replicate n a @ u" is balanced. Graphically, 
+
+   n times          w
+  /-------\ /-------------\
+  a a ... a x1 x2   ...  xm
+            \------/
+               u
+  \----------------/  \----/
+          w1            w2
+
+*)
+lemma S_replicate_prefix: "S w1 \<Longrightarrow> w1 @ w2 = replicate n a @ w \<Longrightarrow> (\<exists>u. w1 = replicate n a @ u \<and> w = u @ w2)" sorry
+
 lemma balanced_concat: "balanced n w \<Longrightarrow> balanced m v \<Longrightarrow> balanced (n + m) (w @ v)"
 proof (induction w arbitrary: n m v)
   case Nil
@@ -165,34 +181,46 @@ next
     by (smt append_Cons balanced.elims(2) balanced.elims(3) balanced.simps(2) diff_Suc_1 list.inject list.sel(2) list.sel(3) nat.simps(3) not_Cons_self2) 
 qed
 
-(* TODO: Complete the proof. *)
+(* TODO: Refactor using "obtain" (e.g. "obtain v where split_w: "w = v @ [b]") *)
 lemma S_sneak_in: "S (replicate n a @ w) \<Longrightarrow> S (replicate (Suc n) a @ b # w)"
 proof (induction "replicate n a @ w" arbitrary: n w rule: S.induct)
   case empS
   then show ?case using test2S' by auto 
 next
   case (expS w')
-  then show ?case sorry
+  then have "w \<noteq> []"
+    by (metis S.expS S_ends_with_b alpha.distinct(1) append_Nil2 empty_replicate last_replicate list.distinct(1)) 
+  then have "(\<exists>v. w = v @ [b])"
+    by (metis Nil_is_append_conv append_butlast_last_id expS.hyps(3) last.simps last_append last_snoc) 
+  then have "(\<exists>v. a # w' @ [b] = replicate n a @ v @ [b] \<and> w = v @ [b])" 
+    by (simp add: expS.hyps(3))
+  then have "(\<exists>v. w' @ [b] = replicate (n - 1) a @ v @ [b] \<and> w = v @ [b])" 
+    using S_replicate_prefix empS by force
+  then have "(\<exists>v. w' = replicate (n - 1) a @ v \<and> w = v @ [b])"
+    by simp 
+  then have "(\<exists>v. S (replicate (Suc (n - 1)) a @ b # v) \<and> w = v @ [b])"
+    using expS.hyps(2) by blast
+  then have "(\<exists>v. S (a # replicate (Suc (n - 1)) a @ b # v @ [b]) \<and> w = v @ [b])"
+    using S.intros(2) by fastforce 
+  then have "(\<exists>v. S (replicate (Suc n) a @ b # v @ [b]) \<and> w = v @ [b])"
+    using expS.hyps(3) \<open>\<exists>v. w' @ [b] = replicate (n - 1) a @ v @ [b] \<and> w = v @ [b]\<close> by force  
+  then show ?case
+    by auto 
 next
   case (dupS w1 w2)
-  then show ?case sorry
+  then have "(\<exists>u. w1 = replicate n a @ u \<and> w = u @ w2)" 
+    by (simp add: S_replicate_prefix) 
+  then have "(\<exists>u. S (replicate (Suc n) a @ b # u) \<and> w = u @ w2)" 
+    using dupS.hyps(2) by blast
+  moreover have "w2 = replicate 0 a @ w2" 
+    by simp
+  then have "S (replicate 0 a @ b # w2)" 
+    using S_replicate_prefix empS by fastforce 
+  ultimately have "(\<exists>u. S (replicate (Suc n) a @ b # u @ w2) \<and> w = u @ w2)" 
+    using S.intros(3) dupS.hyps(3) by fastforce
+  then show ?case 
+    by auto 
 qed
-
-(*
-TODO: Prove this lemma. This should hold since given that "S w1" (i.e. w1 is balanced) and w1 is a prefix of 
-"replicate n a @ w", then w1 should include "replicate n a" and the subsequent substring u such that 
-"replicate n a @ u" is balanced. Graphically, 
-
-   n times          w
-  /-------\ /-------------\
-  a a ... a x1 x2   ...  xm
-            \------/
-               u
-  \----------------/  \----/
-          w1            w2
-
-*)
-lemma S_replicate_prefix: "S w1 \<Longrightarrow> w1 @ w2 = replicate n a @ w \<Longrightarrow> (\<exists>u. w1 = replicate n a @ u \<and> w = u @ w2)" sorry
 
 
 (* NOTE: Other auxiliary lemmas, just for fun :) *)
@@ -223,6 +251,7 @@ qed
 
 (* Main theorems *)
 
+(* TODO: Refactor using "obtain" (e.g. "obtain v where split_w: "w = v @ [b]") *)
 theorem "S (replicate n a @ w) \<Longrightarrow> balanced n w"
 proof (induction "replicate n a @ w" arbitrary: n w rule: S.induct)
   case empS
