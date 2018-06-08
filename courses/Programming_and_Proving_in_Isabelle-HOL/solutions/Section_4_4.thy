@@ -178,47 +178,30 @@ next
   then show ?case
   proof (cases n)
     case 0
-    then have "a # w' @ [b] = w" 
-      using expS.hyps(3) by simp 
-    then have "S w" 
-      using `S w'` and S.simps by blast
-    moreover have "S [a, b]" 
-      using test2S' by simp
-    ultimately have "S ([a, b] @ w)" 
-      using S.simps by blast
-    then show ?thesis 
-      using "0" by simp 
+    then have "a # w' @ [b] = w" using expS.hyps(3) by simp 
+    then have "S w" using \<open>S w'\<close> S.simps by blast
+    moreover have "S [a, b]" using test2S' by simp
+    ultimately have "S ([a, b] @ w)" using S.simps by blast
+    then show ?thesis using "0" by simp 
   next
     case (Suc n')
     then show ?thesis
     proof (cases "w' = []")
       case True
-      then have "[a, b] = replicate n a @ w" 
-        using expS.hyps(3) and Suc by simp
-      then have "n = Suc 0 \<and> w = [b]"
-        by (metis Suc alpha.distinct(1) append_Nil diff_Suc_1 last.simps length_replicate list.sel(3) list.size(3) nat.distinct(1) replicate_app_Cons_same tl_append2 tl_replicate) 
-      then have "replicate (Suc n) a @ b # w = replicate (Suc (Suc 0)) a @ b # [b]" 
-        by simp
-      then have "replicate (Suc (Suc 0)) a @ b # [b] = [a, a, b, b]" 
-        by simp
-      then show ?thesis 
-        using \<open>n = Suc 0 \<and> w = [b]\<close> and S.expS and test2S' by force      
+      then have "[a, b] = replicate n a @ w" using expS.hyps(3) Suc by simp
+      then have "n = Suc 0 \<and> w = [b]" by (metis Suc alpha.distinct(1) append_Nil diff_Suc_1 last.simps length_replicate list.sel(3) list.size(3) nat.distinct(1) replicate_app_Cons_same tl_append2 tl_replicate) 
+      then have "replicate (Suc n) a @ b # w = replicate (Suc (Suc 0)) a @ b # [b]" by simp
+      then have "replicate (Suc (Suc 0)) a @ b # [b] = [a, a, b, b]" by simp
+      then show ?thesis using \<open>n = Suc 0 \<and> w = [b]\<close> S.expS test2S' by force      
     next
       case False
-      then obtain v where split_w: "w = v @ [b]"
-        by (metis Nil_is_append_conv alpha.distinct(1) append_butlast_last_id expS.hyps(3) last.simps last_append list.distinct(1) replicate_app_Cons_same) 
-      then have "a # w' @ [b] = replicate n a @ v @ [b]" 
-        using expS.hyps(3) by simp
-      then have "w' @ [b] = replicate n' a @ v @ [b]"
-        using Suc by auto 
-      then have "S (replicate (Suc n') a @ b # v)"
-        using expS.hyps(2) by simp
-      then have "S (a # replicate (Suc n') a @ b # v @ [b])"
-        using S.intros(2) by fastforce 
-      then have "S (replicate (Suc n) a @ b # v @ [b])"
-        using expS.hyps(3) and \<open>w' @ [b] = replicate n' a @ v @ [b]\<close> and Suc by simp   
-      then show ?thesis 
-        using split_w by simp
+      then obtain v where split_w: "w = v @ [b]" by (metis Nil_is_append_conv alpha.distinct(1) append_butlast_last_id expS.hyps(3) last.simps last_append list.distinct(1) replicate_app_Cons_same) 
+      then have "a # w' @ [b] = replicate n a @ v @ [b]" using expS.hyps(3) by simp
+      then have "w' @ [b] = replicate n' a @ v @ [b]" using Suc by auto 
+      then have "S (replicate (Suc n') a @ b # v)" using expS.hyps(2) by simp
+      then have "S (a # replicate (Suc n') a @ b # v @ [b])" using S.intros(2) by fastforce 
+      then have "S (replicate (Suc n) a @ b # v @ [b])" using expS.hyps(3) \<open>w' @ [b] = replicate n' a @ v @ [b]\<close> Suc by simp   
+      then show ?thesis using split_w by simp
     qed
   qed
 next
@@ -226,25 +209,16 @@ next
   then show ?case
   proof (cases "n < length w1")
     case True
-    then have "w1 = replicate n a @ take (length w1 - n) w" 
-      using dupS.hyps(5) by (simp add: append_eq_conv_conj min.absorb2)
-    then have "S (replicate (Suc n) a @ b # take (length w1 - n) w)"
-      using dupS.hyps(2) by blast 
-    moreover have "w2 = drop (length w1 - n) w" 
-      using dupS.hyps(5) True by (simp add: append_eq_conv_conj)
-    ultimately show ?thesis
-      using S.dupS dupS.hyps(3) by force 
+    then have "w1 = replicate n a @ take (length w1 - n) w" using dupS.hyps(5) by (simp add: append_eq_conv_conj min.absorb2)
+    then have "S (replicate (Suc n) a @ b # take (length w1 - n) w)" using dupS.hyps(2) by blast 
+    moreover have "w2 = drop (length w1 - n) w" using dupS.hyps(5) True by (simp add: append_eq_conv_conj)
+    ultimately show ?thesis using S.dupS dupS.hyps(3) by force 
   next
     case False
-    then have "w2 = replicate (n - length w1) a @ w"
-      using dupS.hyps(5) by (simp add: append_eq_append_conv_if)
-    then have "S (replicate (Suc (n - length w1)) a @ b # w)"
-      using dupS.hyps(4) by blast 
-    moreover have "w1 = replicate (length w1) a" 
-      using dupS.hyps(5) False
-      by (smt \<open>w2 = replicate (n - length w1) a @ w\<close> append.assoc append_same_eq length_append length_replicate replicate_add)
-    ultimately show ?thesis  
-      by (metis dupS.hyps(1) S_ends_with_b alpha.distinct(1) dupS.hyps(4) dupS.hyps(5) last_replicate length_0_conv self_append_conv2) 
+    then have "w2 = replicate (n - length w1) a @ w" using dupS.hyps(5) by (simp add: append_eq_append_conv_if)
+    then have "S (replicate (Suc (n - length w1)) a @ b # w)" using dupS.hyps(4) by blast 
+    moreover have "w1 = replicate (length w1) a" using dupS.hyps(5) False by (smt \<open>w2 = replicate (n - length w1) a @ w\<close> append.assoc append_same_eq length_append length_replicate replicate_add)
+    ultimately show ?thesis by (metis dupS.hyps(1,4,5) S_ends_with_b alpha.distinct(1) last_replicate length_0_conv self_append_conv2) 
   qed
 qed
 
@@ -336,42 +310,28 @@ proof (induction "replicate n a @ w" arbitrary: n w rule: S.induct)
   then show ?case by auto 
 next
   case (expS w')
-  then have "w \<noteq> []"
-    by (metis S.expS S_ends_with_b alpha.distinct(1) append_Nil2 empty_replicate last_replicate list.distinct(1))  
-  then have "(\<exists>v. w = v @ [b])"
-    by (metis Nil_is_append_conv append_butlast_last_id expS.hyps(3) last.simps last_append last_snoc) 
-  then have "(\<exists>v. a # w' @ [b] = replicate n a @ v @ [b])"
-    by (simp add: expS.hyps(3))
-  then have "(\<exists>v. w' @ [b] = replicate (n - 1) a @ v @ [b])"
-    by (metis append_Cons append_Nil elems.cases list.sel(2) list.sel(3) tl_replicate)
-  then have "(\<exists>v. w' = replicate (n - 1) a @ v)"
-    by simp 
-  then have "(\<exists>v. balanced (n - 1) v)"
-    using expS.hyps(2) by blast
-  then show ?case by (smt Suc_pred' \<open>\<exists>v. w' @ [b] = replicate (n - 1) a @ v @ [b]\<close> append_Cons append_self_conv2 balanced.simps(2) balanced_append_closing butlast_append butlast_snoc list.sel(2) local.expS(2) local.expS(3) not_gr_zero replicate_Suc replicate_empty same_append_eq snoc_eq_iff_butlast tl_replicate)
+  then have "w \<noteq> []" by (metis S.expS S_ends_with_b alpha.distinct(1) append_Nil2 empty_replicate last_replicate list.distinct(1))  
+  then have "(\<exists>v. w = v @ [b])" by (metis Nil_is_append_conv append_butlast_last_id expS.hyps(3) last.simps last_append last_snoc) 
+  then have "(\<exists>v. a # w' @ [b] = replicate n a @ v @ [b])" by (simp add: expS.hyps(3))
+  then have "(\<exists>v. w' @ [b] = replicate (n - 1) a @ v @ [b])" by (metis append_Cons append_Nil elems.cases list.sel(2,3) tl_replicate)
+  then have "(\<exists>v. w' = replicate (n - 1) a @ v)" by simp 
+  then have "(\<exists>v. balanced (n - 1) v)" using expS.hyps(2) by blast
+  then show ?case by (smt Suc_pred' \<open>\<exists>v. w' @ [b] = replicate (n - 1) a @ v @ [b]\<close> append_Cons append_self_conv2 balanced.simps(2) balanced_append_closing butlast_append butlast_snoc list.sel(2) local.expS(2,3) not_gr_zero replicate_Suc replicate_empty same_append_eq snoc_eq_iff_butlast tl_replicate)
 next
   case (dupS w1 w2)
   then show ?case 
   proof (cases "n < length w1")
     case True
-    then have "w1 = replicate n a @ take (length w1 - n) w" 
-      using dupS.hyps(5) by (simp add: append_eq_conv_conj min.absorb2)
-    then have "balanced n (take (length w1 - n) w)"
-      using dupS.hyps(2) by blast 
-    moreover have "w2 = drop (length w1 - n) w" 
-      using dupS.hyps(5) True by (simp add: append_eq_conv_conj)
-    ultimately show ?thesis 
-      using balanced_concat dupS.hyps(4) by fastforce 
+    then have "w1 = replicate n a @ take (length w1 - n) w" using dupS.hyps(5) by (simp add: append_eq_conv_conj min.absorb2)
+    then have "balanced n (take (length w1 - n) w)" using dupS.hyps(2) by blast 
+    moreover have "w2 = drop (length w1 - n) w" using dupS.hyps(5) True by (simp add: append_eq_conv_conj)
+    ultimately show ?thesis using balanced_concat dupS.hyps(4) by fastforce 
   next
     case False
-    then have "w2 = replicate (n - length w1) a @ w"
-      using dupS.hyps(5) by (simp add: append_eq_append_conv_if)
-    then have "balanced (n - length w1) w"
-      using dupS.hyps(4) by blast 
-    moreover have "w1 = replicate (length w1) a" 
-      using dupS.hyps(5) False by (metis append_eq_append_conv_if drop_replicate leI length_replicate rev_replicate take_rev) 
-    ultimately show ?thesis  
-      using balanced_concat by (metis False append_Nil2 dupS.hyps(2) le_add_diff_inverse2 not_less) 
+    then have "w2 = replicate (n - length w1) a @ w" using dupS.hyps(5) by (simp add: append_eq_append_conv_if)
+    then have "balanced (n - length w1) w" using dupS.hyps(4) by blast 
+    moreover have "w1 = replicate (length w1) a" using dupS.hyps(5) False by (metis append_eq_append_conv_if drop_replicate leI length_replicate rev_replicate take_rev) 
+    ultimately show ?thesis using balanced_concat by (metis False append_Nil2 dupS.hyps(2) le_add_diff_inverse2 not_less) 
   qed  
 qed
 
@@ -394,11 +354,9 @@ next
   next
     case b
     then have "balanced n (x # xs) = balanced n (b # xs)" by simp
-    also have "... = balanced (n - 1) xs"
-      by (metis Cons.prems Suc_pred' alpha.distinct(1) balanced.elims(2) balanced.simps(3) calculation list.inject list.simps(3) zero_less_Suc) 
+    also have "... = balanced (n - 1) xs" by (metis Cons.prems Suc_pred' alpha.distinct(1) balanced.elims(2) balanced.simps(3) calculation list.inject list.simps(3) zero_less_Suc) 
     finally have "balanced n (x # xs) = S (replicate (n - 1) a @ xs)" using Cons.IH Cons.prems by auto 
-    then show ?thesis
-      by (metis Cons.prems S_sneak_in Suc_pred' b balanced.simps(5) not_gr_zero) 
+    then show ?thesis by (metis Cons.prems S_sneak_in Suc_pred' b balanced.simps(5) not_gr_zero) 
   qed
 qed
 
