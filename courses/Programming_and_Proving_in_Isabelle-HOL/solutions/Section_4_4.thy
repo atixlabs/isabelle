@@ -127,32 +127,26 @@ value "balanced 1 [a,b,a,b,b] = True"
 lemma S_ends_with_b: "S w \<Longrightarrow> w \<noteq> [] \<Longrightarrow> last w = b"
   by (metis S_imp_T T.cases append_is_Nil_conv last_append last_snoc) 
 
-lemma balanced_inj: "balanced n w \<Longrightarrow> balanced m w \<Longrightarrow> n = m"
-proof (induction w arbitrary: n m)
-  case Nil
-  then show ?case by (metis balanced.elims(2) list.distinct(1)) 
-next
-  case (Cons x xs)
-  then show ?case 
-  proof (cases x)
-    case a
-    then show ?thesis
-      using Cons.IH Cons.prems(1) Cons.prems(2) balanced.simps(2) by blast 
-  next
-    case b
-    then show ?thesis
-      by (metis Cons.IH Cons.prems(1) Cons.prems(2) alpha.distinct(1) balanced.elims(2) list.distinct(1) list.inject) 
-  qed
-qed
-
 lemma balanced_concat: "balanced n w \<Longrightarrow> balanced m v \<Longrightarrow> balanced (n + m) (w @ v)"
 proof (induction w arbitrary: n m v)
   case Nil
-  then show ?case using add_eq_if balanced_inj by auto
+  then show ?case by (metis add_eq_if append_Nil balanced.elims(2) list.distinct(1)) 
 next
   case (Cons x xs)
   then show ?case
-    by (metis add_eq_if append_Cons balanced.elims(2) balanced.simps(2) balanced.simps(3) diff_Suc_1 list.distinct(1) list.inject nat.simps(3))
+  proof (cases x)
+    case a
+    then have "balanced n (a # xs) = balanced (Suc n) xs" by simp
+    then have "balanced (Suc (n + m)) (xs @ v)" using Cons.IH Cons.prems(1,2) a by fastforce  
+    then have "balanced (n + m) (a # xs @ v)" using balanced.simps(2) by blast 
+    then show ?thesis by (simp add: a) 
+  next
+    case b
+    then have "balanced n (b # xs) = balanced (n - 1) xs" by (metis Cons.prems(1) One_nat_def Suc_pred balanced.simps(3,5) neq0_conv)  
+    then have "balanced ((n - 1) + m) (xs @ v)" using Cons.IH Cons.prems(1,2) b by auto 
+    then have "balanced (n + m) (b # xs @ v)" using Cons.prems(1) add_eq_if b by auto 
+    then show ?thesis by (simp add: b) 
+  qed
 qed
 
 lemma balanced_append_closing: "balanced n w \<Longrightarrow> balanced (Suc n) (w @ [b])"
@@ -162,7 +156,17 @@ proof (induction w arbitrary: n)
 next
   case (Cons x xs)
   then show ?case 
-    by (smt append_Cons balanced.elims(2) balanced.elims(3) balanced.simps(2) diff_Suc_1 list.inject list.sel(2) list.sel(3) nat.simps(3) not_Cons_self2) 
+  proof (cases x)
+    case a
+    then have "balanced n (a # xs) = balanced (Suc n) xs" by simp
+    then have "balanced (Suc (Suc n)) (xs @ [b])" using Cons.IH Cons.prems a by blast 
+    then show ?thesis by (simp add: a) 
+  next
+    case b
+    then have "balanced n (b # xs) = balanced (n - 1) xs" by (metis Cons.prems(1) One_nat_def Suc_pred balanced.simps(3,5) neq0_conv)
+    then have "balanced (Suc (n - 1)) (xs @ [b])" using Cons.IH Cons.prems b by blast 
+    then show ?thesis by (metis Cons.prems One_nat_def Suc_pred append_Cons b balanced.simps(3,5) neq0_conv)
+  qed
 qed
 
 lemma S_sneak_in: "S (replicate n a @ w) \<Longrightarrow> S (replicate (Suc n) a @ b # w)"
@@ -247,27 +251,79 @@ qed
 
 (* NOTE: Other auxiliary lemmas, just for fun :) *)
 
-lemma cons_disbalance: "balanced n w \<Longrightarrow> \<not> balanced n (x#w)"
-proof (induction w)
+lemma "balanced n w \<Longrightarrow> balanced m w \<Longrightarrow> n = m"
+proof (induction w arbitrary: n m)
+  case Nil
+  then show ?case by (metis balanced.elims(2) list.distinct(1)) 
+next
+  case (Cons x xs)
+  then show ?case 
+  proof (cases x)
+    case a
+    then have "balanced n (a # xs) = balanced (Suc n) xs" by simp
+    moreover have "balanced m (a # xs) = balanced (Suc m) xs" by simp
+    ultimately have "Suc n = Suc m" using Cons.IH Cons.prems(1,2) a by blast 
+    then show ?thesis by auto
+  next
+    case b
+    then have "balanced n (b # xs) = balanced (n - 1) xs" by (metis Cons.prems(1) One_nat_def Suc_pred balanced.simps(3,5) neq0_conv) 
+    moreover have "balanced m (b # xs) = balanced (m - 1) xs" by (metis Cons.prems(2) One_nat_def Suc_pred b balanced.simps(3,5) neq0_conv) 
+    ultimately have "n - 1 = m - 1" using Cons.IH Cons.prems(1) Cons.prems(2) b by blast 
+    then show ?thesis by (metis Cons.prems(1,2) One_nat_def Suc_pred b balanced.simps(5) neq0_conv) 
+  qed
+qed
+
+lemma "balanced n w \<Longrightarrow> \<not> balanced n (x # w)"
+proof (induction w arbitrary: n)
   case Nil
   then show ?case
     using balanced.elims(2) balanced.simps(4) by blast 
 next
   case (Cons x xs)
-  then show ?case
-    by (metis (full_types) alpha.exhaust balanced.simps(2) balanced.simps(3) balanced_inj) 
+  then show ?case 
+  proof (cases x)
+    case a
+    then have "balanced n (a # xs) = balanced (Suc n) xs" by simp
+    then have "\<not> balanced (Suc n) (a # xs)" by (metis (full_types) Cons.IH Cons.prems a alpha.exhaust balanced.simps(2-3)) 
+    then have "\<not> balanced n (a # a # xs)" by auto
+    then show ?thesis by (metis (full_types) Cons.IH Cons.prems a alpha.exhaust balanced.simps(2,3,5) not0_implies_Suc)  
+  next
+    case b
+    then have "balanced n (b # xs) = balanced (n - 1) xs" by (metis Cons.prems One_nat_def Suc_pred balanced.simps(3,5) neq0_conv) 
+    then have "\<not> balanced (n - 1) (b # xs)" by (metis (full_types) Cons.IH Cons.prems alpha.exhaust b balanced.simps(2,3,5) not0_implies_Suc) 
+    then have "\<not> balanced n (b # b # xs)" by (metis One_nat_def Suc_pred balanced.simps(3,5) neq0_conv) 
+    then show ?thesis by (metis (full_types) Cons.IH Cons.prems alpha.exhaust b balanced.simps(2,3,5) not0_implies_Suc) 
+  qed
 qed
 
-lemma balanced_starts_with_a: "w \<noteq> [] \<Longrightarrow> balanced 0 w \<Longrightarrow> hd w = a"
+lemma "w \<noteq> [] \<Longrightarrow> balanced 0 w \<Longrightarrow> hd w = a"
   by (metis balanced.elims(2) balanced.simps(1) balanced.simps(4) list.sel(1)) 
 
-lemma balanced_ends_with_b: "w \<noteq> [] \<Longrightarrow> balanced n w \<Longrightarrow> last w = b" 
+lemma "w \<noteq> [] \<Longrightarrow> balanced n w \<Longrightarrow> last w = b" 
 proof (induction w arbitrary: n)
   case Nil
   then show ?case by simp 
 next
   case (Cons x xs)
-  then show ?case by (smt balanced.elims(2) balanced.simps(4) last_ConsL last_ConsR list.sel(3)) 
+  then show ?case 
+  proof (cases x)
+    case a
+    then have "balanced n (a # xs) = balanced (Suc n) xs" by simp
+    then have "last xs = b" using Cons.IH Cons.prems(2) a balanced.simps(4) by blast 
+    then show ?thesis using Cons.prems(2) a by auto 
+  next
+    case b
+    then show ?thesis
+    proof (cases "xs = []")
+      case True 
+      then show ?thesis by (simp add: b) 
+    next
+      case False
+      then have "balanced n (b # xs) = balanced (n - 1) xs" by (metis Cons.prems(2) One_nat_def Suc_pred b balanced.simps(3,5) neq0_conv) 
+      then have "last xs = b" using Cons.IH Cons.prems(2) False b by blast 
+      then show ?thesis by (simp add: False)
+    qed
+  qed
 qed
 
 
