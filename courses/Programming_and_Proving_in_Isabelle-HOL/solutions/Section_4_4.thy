@@ -6,7 +6,7 @@ begin
 
 inductive ev :: "nat \<Rightarrow> bool" where
 ev0: "ev 0" |
-evSS : "ev n \<Longrightarrow> ev (n + 2)"
+evSS : "ev n \<Longrightarrow> ev (Suc (Suc n))"
 
 (* NOTE: For some reason the technique explained in Section 4.4.7 didn't work. The following code 
    hangs:
@@ -32,16 +32,57 @@ next
    then show ?case by (simp add: ev.evSS)
 qed
 
+(* NOTE: The following is a much simpler proof by rule inversion. *)
+lemma
+  assumes "ev (Suc (Suc n))"
+  shows "ev n"
+  using assms 
+proof cases
+  case evSS
+  then show ?thesis by simp
+qed
+
 
 (* Exercise 4.4 *)
 
 lemma "\<not> ev (Suc (Suc (Suc 0)))" 
 proof
   assume "ev (Suc (Suc (Suc 0)))" 
-  from this show False
+  then show False
   proof cases 
     (* Case ev0 is impossible, so it's not proven. *)
     case evSS then show False using ev.cases by auto 
+  qed
+qed
+
+(* NOTE: Wolfgang's comment: "The solution that the author of the tutorial was after solves also the 
+   inner goal with the `cases` method (note that he mentions the situation where there are no goals 
+   to prove). This solution is as follows:" *)
+lemma "\<not> ev (Suc (Suc (Suc 0)))" 
+proof
+  assume "ev (Suc (Suc (Suc 0)))" 
+  then show False
+  proof cases 
+    case evSS
+    then show False
+    proof cases (* "No subgoals!" at this point, so the proof is closed with "qed". *)
+    qed
+  qed
+qed
+
+(* NOTE: Wolfgang's comment: "It’s possible to simplify the above solution a bit, arriving at the 
+   following code... The point is that `by <method>` is just a shorthand for `proof <method> qed`. 
+   So if you say `by blast`, for example, you are actually saying `proof blast qed`. Isabelle will 
+   use `blast` as an initial proof method to turn the current goal into a list of (hopefully) simpler 
+   goals. You then have to prove these goals between `proof` and `qed`. However, since a successful 
+   `blast` doesn’t leave any goals behind, there is nothing to put between `proof` and `qed`" *)
+lemma "\<not> ev (Suc (Suc (Suc 0)))" 
+proof
+  assume "ev (Suc (Suc (Suc 0)))" 
+  then show False
+  proof cases 
+    case evSS
+    then show False by cases (* `by cases` is equivalent to `proof cases qed` *)
   qed
 qed
 
@@ -52,30 +93,30 @@ lemma
   assumes "iter r n x y" 
   shows "star r x y"
   using assms
-proof (induction rule: iter.induct)
-  case (iter_refl x)
-  then show ?case by (simp add: refl)
+proof (induction) (* No need to state the induction rule `(induction rule: iter.induct)` *)
+  case iter_refl
+  show ?case by (simp add: refl)
 next
-  case (iter_step n x y z)
+  case iter_step
   (* NOTE: The key here is to use lemma star_flip_step from Exercise 3.3. *)
-  then show ?case using iter_step.IH and iter_step.hyps(2) by (simp add: star_flip_step) 
+  then show ?case by (simp add: star_flip_step) 
 qed
 
 
 (* Exercise 4.6 *)
 
 fun elems :: "'a list \<Rightarrow> 'a set" where
-"elems []     = {}" |
-"elems (x#xs) = {x} \<union> elems xs"
+"elems []       = {}" |
+"elems (x # xs) = {x} \<union> elems xs"
 
 value "elems [(1::nat),2,3]" (* {1,2,3} *)
 
 lemma "x \<in> elems xs \<Longrightarrow> \<exists> ys zs. xs = ys @ x # zs \<and> x \<notin> elems ys"
-proof (induction xs rule: elems.induct)
-  case 1
+proof (induction xs)
+  case Nil
   then show ?case by simp
 next
-  case (2 a as)
+  case (Cons a as)
   then show ?case
   proof (cases "x = a")
     case True
@@ -85,7 +126,7 @@ next
   next
     case False
     then have "x \<in> elems as" using `x \<in> elems (a # as)` and `x \<noteq> a` by simp
-    then have "\<exists>ys zs. as = ys @ x # zs \<and> x \<notin> elems ys" using "2.IH" by simp
+    then have "\<exists>ys zs. as = ys @ x # zs \<and> x \<notin> elems ys" using "Cons.IH" by simp
     (* NOTE: The thesis holds for ys' = a # ys and zs' = zs. *)
     then obtain ys zs where "a # as = (a # ys) @ x # zs \<and> x \<notin> elems ys" by auto
     then show ?thesis using `x \<noteq> a` by fastforce 
@@ -130,7 +171,8 @@ lemma S_ends_with_b: "S w \<Longrightarrow> w \<noteq> [] \<Longrightarrow> last
 lemma balanced_concat: "balanced n w \<Longrightarrow> balanced m v \<Longrightarrow> balanced (n + m) (w @ v)"
 proof (induction w arbitrary: n m v)
   case Nil
-  then show ?case by (metis add_eq_if append_Nil balanced.elims(2) list.distinct(1)) 
+  from `balanced n []` have "n = 0" using balanced.elims by blast
+  with `balanced m v` show ?case by simp
 next
   case (Cons x xs)
   then show ?case
@@ -167,6 +209,14 @@ next
     then have "balanced (Suc (n - 1)) (xs @ [b])" using Cons.IH Cons.prems b by blast 
     then show ?thesis by (metis Cons.prems One_nat_def Suc_pred append_Cons b balanced.simps(3,5) neq0_conv)
   qed
+qed
+
+(* NOTE: Another proof for `balanced_append_closing` in terms of `balanced_concat`. *)
+lemma "balanced n w \<Longrightarrow> balanced (Suc n) (w @ [b])"
+proof -
+  assume "balanced n w"
+  moreover have "balanced 1 [b]" by simp
+  ultimately show ?thesis using balanced_concat Suc_eq_plus1 by presburger
 qed
 
 lemma S_sneak_in: "S (replicate n a @ w) \<Longrightarrow> S (replicate (Suc n) a @ b # w)"
