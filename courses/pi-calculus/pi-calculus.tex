@@ -1,0 +1,578 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{framed}
+\usepackage{caption}
+\usepackage{amsthm}
+\usepackage{enumerate}
+
+\author{Javier R. Diaz}
+\title{The $\pi$-calculus}
+
+\newcommand{\ifthen}[2]{\texttt{if}\;#1\;\texttt{then}\;#2}
+\newcommand{\ifthenelse}[3]{\ifthen{#1}{#2}\;\texttt{else}\;#3}
+\newcommand{\resp}[1]{(\boldsymbol{\nu}#1)}
+\newcommand{\res}[2]{\resp{#1}#2}
+\newcommand{\nil}{\mathbf{0}}
+\newcommand{\outp}[2]{\overline{#1}#2}
+\newcommand{\inpp}[2]{#1(#2)}
+\newcommand{\silp}{\tau}
+\newcommand{\prefix}[2]{{#1}\,.\,#2}
+\newcommand{\boutp}[2]{\overline{#1}\boldsymbol{\nu}#2}
+\newcommand{\out}[3]{\prefix{\outp{#1}{#2}}{#3}}
+\newcommand{\inp}[3]{\prefix{\inpp{#1}{#2}}{#3}}
+\newcommand{\bout}[3]{\prefix{\boutp{#1}{#2}}{#3}}
+\newcommand{\sil}[1]{\prefix{\silp}{#1}}
+\newcommand{\defi}{\buildrel \text{def}\over =}
+\newcommand{\para}{\:|\:}
+\newcommand{\fn}{\texttt{fn}}
+\newcommand{\bn}{\texttt{bn}}
+\newcommand{\fix}[2]{\text{fix }#1\,.\,#2}
+\newcommand{\tran}[3]{#1 \overset{#2}{\longrightarrow} #3}
+\newcommand{\rulname}[1]{\scriptstyle \text{#1}}
+\newcommand{\rul}[3]{\rulname{#1} \:\:\: \displaystyle \frac{#2}{#3}}
+\newcommand{\bsim}{\:\dot{\sim}\:}
+\newcommand{\congr}{\:\sim\:}
+
+%\newtheorem{theorem}{Theorem}[section]
+%\numberwithin{theorem}{chapter}
+%\renewcommand{\thetheorem}{\arabic{theorem}}
+
+\newtheorem{theorem}{Proposition}
+%\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+The $\pi$-calculus is a mathematical model of processes whose interconnections change as they interact. The basic computational step is the transfer of a communication link between two processes; the recipient can then use the link for further interaction with other parties. The idea that the names of the links belong to the same category as the transferred objects is one of the cornerstones of the calculus, and is one way in which it is different from other process algebras. 
+
+At first sight it appears as if the $\pi$-calculus is just a specialised form of a value-passing process algebra where the values are links. In such a comparison the calculus may be thought rather poor since there are no data types and no functions defined on the names; the trasferable entities are simple atomic things without any internal structure. The reason that the $\pi$-calculus nevertheless is considered more expressive is that it admits migrating local scopes. Most process algebras have a way to declare a communication link local to a set of processes. For example the fact that $P$ and $Q$ share a private port $a$ is symbolised by $\res{a}{(P|Q)}$. It is similar in that no other process can use $a$ immediately as a link to $P$ or $Q$. The difference is that the name $a$ is also a transferable object and as such can be sent, by $P$ or $Q$, to another process which then can use the restricted link. So, although the transferable objects are simple atomic things they can also be declared local with a defined scope, and in this way the calculus transcends the ordinary value-passing process algebras. This is also the main source of diffculty in the development of the theory because the scope of an object, as represented by the operands of its restriction, must migrate with the object as it is transferred between processes.
+
+\section{The $\pi$-Calculus}
+
+\subsection{Basic Definitions}
+
+We assume a potentially infinite set of \emph{names} $\mathcal{N}$, ranged over by $a, b,\dots, z$, which will function as all of communication ports, variables and data values, and a set of \emph{(agent) identifiers} ranged over by $A$, each with a fixed nonnegative arity. The \emph{agents}, ranged over by $P, Q, \dots$ are defined in Table 1. From that table we see that agents can be of the following forms:
+
+\begin{framed}
+  \begin{center}  
+	\begin{tabular}{l l l l l}
+  	\textbf{Prefixes} & $\alpha$ & $::=$ & $\outp{a}{x}$ & Output \\
+  	&&& $\inpp{a}{x}$ & Input \\
+  	&&& $\silp$ & Silent \\
+	\\
+  	\textbf{Agents} & $P$ & $::=$ & $\nil$ & Nil \\
+  	&&& $\prefix{\alpha}{P}$ & Prefix \\
+  	&&& $P + P$ & Sum \\
+  	&&& $P \para P$ & Parallel \\
+  	&&& $\ifthen{x = y}{P}$ & Match \\
+  	&&& $\ifthen{x \neq y}{P}$ & Mismatch \\
+  	&&& $\res{x}{P}$ & Restriction \\
+  	&&& $A(y_1,\dots,y_n)$ & Identifier \\
+  	\textbf{Definitions} &&& $A(x_1,\dots,x_n) \defi P$ & (where $i \neq j \Rightarrow x_i \neq x_j$) \\
+	\end{tabular}
+  \captionof{table}{The syntax of the $\pi$-calculus.}
+  \end{center}
+\end{framed}
+
+\begin{enumerate}
+
+\item The empty agent $\nil$, which cannot perform any actions.
+
+\item An \emph{Output Prefix} $\out{a}{x}{P}$. The intuition is that the name $x$ is sent along the name $a$ and thereafter the agent continues as $P$. So $\overline{a}$ can be thought of as an output port and $x$ as a datum sent out from that port.
+
+\item An \emph{Input Prefix} $\inp{a}{x}{P}$, meaning that a name is received along a name $a$, and $x$ is a placeholder for the received name. After the input the agent will continue as $P$ but with the newly received name replacing $x$. So $a$ can be thought of as an input port and $x$ as a variable which will get its value from the input along $a$.
+
+\item A \emph{Silent Prefix} $\sil{P}$, which represents an agent that can evolve to $P$ without interaction with the environment. We use $\alpha, \beta, \dots$ to range over $\inpp{a}{x}, \outp{a}{x}$ and $\silp$ and call them \emph{Prefixes}, and we say that $\prefix{\alpha}{P}$ is a \emph{Prefix form}, or sometimes just \emph{Prefix} when this cannot cause confusion. 
+
+\item A \emph{Sum} $P + Q$ representing an agent that can enact either $P$ or $Q$.
+
+\item A \emph{Parallel Composition} $P \para Q$, which represents the combined behaviour of $P$ and $Q$ executing in parallel. The components $P$ and $Q$ can act independently, and may also communicate if one performs an output and the other an input along the same port.
+
+\item A \emph{Match} $\ifthen{x = y}{P}$. As expected this agent will behave as $P$ if $x$ and $y$ are the same name, otherwise it does nothing.
+
+\item A \emph{Mismatch} $\ifthen{x \neq y}{P}$. This agent will behave as $P$ if $x$ and $y$ are not the same name, otherwise it does nothing.
+
+\item A \emph{Restriction} $\res{x}{P}$. This agent behaves as $P$ but the name $x$ is local, meaning it cannot immediately be used as a port for communication between $P$ and its environment. However, it can be used for communication between components within $P$.
+
+\item An \emph{Identifier} $A(y_1,\dots,y_n)$ where $n$ is the arity of $A$. Every Identifier has a \emph{Definition} $A(x_1,\dots,x_n) \defi P$ where the $x_i$ must be pairwise distinct, and the intuition is that $A(y_1,\dots,y_n)$ behaves as $P$ with $y_i$ replacing $x_i$ for each $i$. So a Definition can be thought of as a process declaration, $x_1,\dots,x_n$ as formal parameters, and the Identifier $A(y_1,\dots,y_n)$ as an invocation with actual parameters $y_1,\dots,y_n$.
+
+\end{enumerate}
+
+The operators are familiar from other process algebras so we shall in the following concentrate on some important aspects particular to the $\pi$-calculus, trusting the reader to be confident with the more general principles.
+
+The forms Nil, Sum and Parallel have exactly the same meaning and use as in other process algebras, and the Prefix forms are as in the algebras that admit value-passing. The \texttt{if} constructs Match and Mismatch may appear limited in comparison with value-passing algebras which usually admit arbitrary Boolean expressions (evaluating to either true or false). But on closer consideration it is apparent that combinations of Match and Mismatch are the only possible tests that can be performed in the $\pi$-calculus: the objects transmitted are just names and these have no structure and no operators are defined on them, so the only thing we can do is compare names for equality. We can combine such tests conjunctively by nesting them. Sometimes we shall use a binary conditional $\ifthenelse{x = y}{P}{Q}$ as an abbreviation for $\ifthen{x = y}{P} + \ifthen{x \neq y}{Q}$.
+
+As in other algebras we say that $P$ is \emph{guarded} in $Q$ if $P$ is a proper subterm of a Prefix form in $Q$. Also, the input Prefix $\inp{a}{x}{P}$ is said to \emph{bind} $x$ in $P$, and occurrences of $x$ in $P$ are then called \emph{bound}. In contrast the output Prefix $\out{a}{x}{P}$ does not bind $x$. These Prefixes are said to have \emph{subject} $a$ and \emph{object} $x$, where the object is called \emph{free} in the output Prefix and \emph{bound} in the input Prefix. The silent Prefix $\silp$ has neither subject nor object.
+
+The Restriction operator $\res{x}{P}$ also binds $x$ in $P$. Its effect is as in other algebras with one significant difference. In ordinary process algebras the things that are restricted are port names and these cannot be transmitted between agents. Therefore the restriction is static in the sense that the scope of a restricted name does not need to change when an agent executes. In the $\pi$-calculus there is no difference between ``port names" and ``values", and a name that represents a port can indeed be transmitted between agents. If that name is restricted the scope of the restriction must change, as we shall see, and indeed almost all of the increased complexity and expressiveness of the $\pi$-calculus over value-passing algebras come from the fact that restricted things move around. The reader may also think of $\res{x}{P}$ as ``new $x$ in $P$", by analogy with the object-oriented use of the word ``new", since this construct can be thought of as declaring a new and hitherto unused name, represented by $x$ for the benefit of $P$.
+
+In summary, both input Prefix and Restriction bind names, and we can define the \emph{bound names} $\bn(P)$ as those with a bound occurrence in $P$ and the \emph{free names} $\fn(P)$ as those with a not bound occurrence, and similarly $\bn(\alpha)$ and $\fn(\alpha)$ for a Prefix $\alpha$. We sometimes write $\fn(P, Q)$ to mean $\fn(P) \cup \fn(Q)$, and just $\alpha$ for $\fn(\alpha) \cup \bn(\alpha)$ when it is apparent that it represents a set of names, such as in ``$x \in \alpha$". In a Definition $A(x_1,\dots,x_n) \defi P$ we assume that $\fn(P) \subseteq \{x_1,\dots,x_n\}$.
+
+A \emph{substitution} is a function from names to names. We write $\{x/y\}$ for the substitution that maps $y$ to $x$ and is identity for all other names, and in general $\{x_1 \dots x_n / y_1 \dots y_n\}$, where the $y_i$ are pairwise distinct, for a function that maps each $y_i$ to $x_i$. We use $\sigma$ to range over substitutions, and sometimes write $\tilde{x}$ for a sequence of names when the length is unimportant or can be inferred from context. The agent $P\sigma$ is $P$ where all free names $x$ are replaced by $\sigma(x)$, with alpha-conversion wherever needed to avoid captures. This means that bound names are renamed such that whenever $x$ is replaced by $\sigma(x)$ then the so obtained occurrence of $\sigma(x)$ is free.
+
+A sum of several agents $P_1 + \cdots + P_n$ is written $\sum_{i=1}^n P_i$, or just $\sum_j P_j$. A sequence of distinct Restrictions $\resp{x_1} \cdots \res{x_n}{P}$ is often abbreviated to $\res{x_1 \cdots x_n}{P}$. In a Prefix we sometimes elide the object if it is not important, so $\prefix{a}{P}$ means $\inp{a}{x}{P}$ where $x$ is a name that is never used, and similarly for output. And we sometimes elide a trailing $\nil$, writing $\alpha$ for the agent $\prefix{\alpha}{\nil}$, where this cannot cause confusion. We give the unary operators precedence over the binary and $|$ precedence over $+$, so for example $\res{x}{P} \para Q + R$ means $(\res{x}{P} \para Q) + R$.
+
+\subsection{Structural Congruence}
+
+The syntax of agents is in one sense too concrete. For example, the agents $\inp{a}{x}{\outp{b}{x}}$ and $\inp{a}{y}{\outp{b}{y}}$ are syntactically different, although they only differ in the choice of bound name and therefore intuitively represent the same behaviour: an agent that inputs something along $a$ and then sends that along $\overline{b}$. As another example the agents $P \para Q$ and $Q \para P$ represent the same thing: a parallel composition of the agents $P$ and $Q$. 
+
+We therefore introduce a \emph{structural congruence} to identify agents which intuitively represent the same thing. It should be emphasized that this has nothing to do with the traditional behavioural equivalences in process algebra which are defined in terms of the behaviour exhibited by an agent under some operational semantics. We have yet to define a semantics, and the structural congruence identifies only agents where it is immediately obvious from their \emph{structure} that they are the same. The definition is given in Table 2.
+
+\begin{framed}
+The structural congruence $\equiv$ is defined as the smallest congruence satisfying the following laws:
+
+\begin{enumerate}
+
+\item If $P$ and $Q$ are variants of alpha-conversion then $P \equiv Q$.
+
+\item The Abelian monoid laws for Parallel: commutativity $P \para Q \equiv Q \para P$, associativity $(P \para Q) \para R \equiv P \para (Q \para R)$, and $\nil$ as unit $P \para \nil \equiv P$; and the same laws for Sum.
+
+\item The unfolding law $A(\tilde{y}) \equiv P\{\tilde{y}/\tilde{x}\}$ if $A(\tilde{x}) \defi P$.
+
+\item The scope extension laws
+
+\begin{flalign*}
+&\res{x}{\nil} && \equiv \enspace \nil  \\
+&\res{x}{(P \para Q)} && \equiv \enspace P \para \res{x}{Q} && \text{if } x \notin \fn(P) \\
+&\res{x}{(P + Q)} && \equiv \enspace P + \res{x}{Q} && \text{if } x \notin \fn(P) \\
+&\res{x}{\ifthen{u = v}{P}} && \equiv \enspace \ifthen{u = v}{\res{x}{P}} && \text{if } x \neq u \text { and } x \neq v \\
+&\res{x}{\ifthen{u \neq v}{P}} && \equiv \enspace \ifthen{u \neq v}{\res{x}{P}} && \text{if } x \neq u \text { and } x \neq v \\
+&\res{x}{\res{y}{P}} && \equiv \enspace \res{y}{\res{x}{P}}
+\end{flalign*}
+
+\end{enumerate}
+\captionof{table}{The definition of structural congruence.}
+\end{framed}
+
+We briefly comment on the clauses in the definition.
+
+\begin{enumerate}
+
+\item Alpha-conversion, i.e., choice of bound names, identifies agents like $\inp{a}{x}{\outp{b}{x}}$ and $\inp{a}{y}{\outp{b}{y}}$.
+
+\item The Abelian monoid laws mean that Parallel and Sum are unordered. The fact that $\nil$ is a unit means that $P \para \nil \equiv P$ and $P + \nil \equiv P$, something which follows from the intuition that $\nil$ is empty and therefore contributes nothing to a Parallel composition or Sum.
+
+\item The unfolding law just says that an Identifier is the same as its Definition, with the appropriate parameter instatiation.
+
+\item The scope extension laws come from our intuition that $\res{x}{P}$ just says that $x$ is a new unique name in $P$; it can be thought of as marking the occurrences of $x$ in $P$ with a special colour saying that this is a local name. It then does not really matter where the symbols ``$\resp{x}$" are placed as long as they mark the same occurrences. For example, in $\nil$ there are no occurrences so the Restriction can be removed at will. In Parallel composition, if all occurrences are in one of the components then it does not matter if the Restriction covers only that component or the whole composition.
+
+\end{enumerate}
+
+Note that we do not have that $\res{x}{(P \para Q)} \equiv \res{x}{P} \para \res{x}{Q}$. The same occurrences are restricted in both agents, but in $\res{x}{(P \para Q)}$ they are restricted by the \emph{same} binder (or if you will, coloured by the same colour), meaning that $P$ and $Q$ can interact using $x$, in contrast to the situation in $\res{x}{P} \para \res{x}{Q}$.
+
+Another key fact is that all unguarded Restrictions can be pulled out to the top level of an agent:
+
+\begin{theorem} Let $P$ be an agent where $\res{x}{Q}$ is an unguarded subterm. Then $P$ is structurally congruent to an agent $\res{x'}{P'}$  where $P'$ is obtained from $P$ by replacing $\res{x}{Q}$ with $Q\{x'/x\}$, for some name $x'$ not occurring in $P$.
+\end{theorem}
+
+The proof is by alpha-converting all bound names so that they become syntactically distinct, and then applying scope extension (from right to left) to move the Restriction to the outermost level. This corresponds to the intuition that instead of declaring something as local it can be given a syntactically distinct name: the effect is the same in that nothing else can access the name. Example: 
+$\res{y}{((\out{y}{x}{P} \para \inp{y}{a}{Q}) + \res{x}{(\inp{x}{b}{R} \para \out{x}{c}{S}))}}$ is structurally congruent to $\res{z}{\res{y}{((\out{y}{x}{P} \para \inp{y}{a}{Q}) + (\inp{z}{b}{R} \para \out{z}{c}{S}))}}$.
+
+Structural congruence is much stronger, i.e., identifies fewer agents, than any of the behavioural equivalences. The structural congruence is used in the definition of operational semantics, which in turn is used to define the behavioural equivalences.
+
+\subsection{Simple Examples}
+
+In summary, through alpha-conversion and scope extension we can send restricted names as objects, and Restrictions will always move with the objects and never include free occurrences of that name. This ability to send scopes along with restricted names is what makes the calculus covenient for modelling exchange of private resources.
+
+A related matter is if $S$ wishes to send two names $d$ and $e$ to a client, and insure that the same client receives both names. If there are several clients then the simple solution of transmitting $d$ and $e$ along predetermined channels may mean that one client receives $d$ and another $e$. A better solution is to first establish a private channel with a client and then send $d$ and $e$ along that channel. The private channel is simply a restricted name. This feature is so common that we introduce an abbreviation for it:
+
+\begin{center}
+  \begin{tabular}{lll}
+	$\out{c}{\langle e_1 \cdots e_n \rangle}{P}$ & means & $\res{p}{\outp{c}{p}\,.\,\outp{p}{e_1}\,. \cdots .\,\outp{p}{e_n}\,.\,P}$ \\
+	$\inp{c}{x_1 \cdots x_n}{Q}$ & means & $\inpp{c}{p}\,.\,\inpp{p}{x_1}\,.\, \cdots .\,\inpp{p}{x_n}\,.\,Q$
+  \end{tabular}
+\end{center}
+where we choose $p \notin \fn(P,Q)$ and all $x_i$ are pairwise distinct.
+
+\section{Variants of the Calculus}
+
+\subsection{Recursion and Replication}
+
+In the $\pi$-calculus as in most process algebras the mechanism for describing iterative or arbitrarily long behaviour is recursion: a recursive Definition
+\[
+A(\tilde{x}) \defi P
+\]
+where $A$ occurs in $P$ can be thought of as the definition of a recursive procedure $A$ with formal parameters $\tilde{x}$, and the agent $A(\tilde{y})$ is the invocation with actual parameters $\tilde{y}$. Sometimes this is notated through an explicit fixpoint constructor: if $P$ is an agent then $\fix{X}{P}$ is an agent. Here the \emph{agent variable} $X$ may occur in P, and $\fix{X}{P}$ means the same as the agent Identifier $A$ with the definition $A \defi P\{A/X\}$. Fixpoints and Definition are thus only notational variants. In large specifications the Definitions tend to be more readable, but the fixpoints sometimes allow a more optimal formulation for theory development.
+
+For some purposes the special case of \emph{Replication} is convenient. If $P$ is an agent then $!P$, the replication of $P$, is given by the definition
+\[
+!P \defi P \para !P
+\]
+or using fixpoints: $!P$ is the agent
+\[
+\fix{X}{(P \para X)}
+\]
+
+In other words, $!P$ represents an unbounded number of copies of $P$ -- the recursion can obviously be unfolded an arbitrary number of times: 
+\[
+!P \:\equiv\: P \para !P \:\equiv\: P \para P \para !P \:\equiv\: P \para P \para P \para P \para !P \quad \text{etc.}
+\]
+
+For example, an agent which can receive inputs along $i$ and forward them on $o$ is:
+\[
+M = !\inp{i}{x}{\outp{o}{x}}
+\]
+
+Suppose this agent receives first $u$ and then $v$ along $i$. Then, by unfolding the Replication, $M \equiv \inp{i}{x}{\outp{o}{x}} \para \inp{i}{x}{\outp{o}{x}} \para M$, the agent will evolve to $\outp{o}{u} \para \outp{o}{v} \para M$, ready to receive more messages along $i$ but also to emit $u$ and $v$ in arbitrary order.
+
+\subsection{The Asynchronous Calculus}
+
+The $\pi$-calculus, as most other process algebras, is based on the paradigm of synchronous communication; an interaction means that one component emits a name at the same time as another component receives it. In contrast, in asynchronous communication there is an unpredictable delay between output and input, during which the message is in transit. This can be modelled by inserting an agent representing an asynchronous communication medium between sender and receiver. The properties of the medium (whether it has a bound on the capacity, whether it preserves the order of messages etc.) is then determined by its definition. For example, an unbounded medium not preserving the order of messages is:
+\[
+M \:\: \defi \:\: \inp{i}{x}{(\outp{o}{x} \para M)}
+\]
+When $M$ receives $u$ along $i$ it evolves to $\outp{o}{u} \para M$, and can at any time deliver $u$ along $o$, and also continue to accept more messages.
+
+Interestingly, this particular form of asynchrony is also captured by a subcalculus of $\pi$ in which there is no need to explicitly represent media. The subcalculus consists of the agents satisfying the following requirements:
+
+\begin{enumerate}
+\item Only $\nil$ can follow an output Prefix.
+\item An output Prefix may not occur as an unguarded operand of $+$.
+\end{enumerate}
+
+The first requirement disallows agents such as $\out{a}{x}{\outp{b}{y}}$, where an agent other than $\nil$ follows $\outp{a}{x}$. The second requirement disallows $\outp{a}{x} + \inpp{b}{y}$, but allows $\sil{\outp{a}{x}} + \inpp{b}{y}$.
+
+This subcalculus is known as the \emph{asynchronous} $\pi$-calculus, and the rationale behind it is as follows. An unguarded output Prefix $\outp{a}{x}$ occurring in a term represents a message that has been sent but not yet received. The action of sending the message is placing it in an unguarded position, as in the following
+\[
+\sil{(\outp{a}{x} \para P)} \overset{\tau}{\longrightarrow} \outp{a}{x} \para P
+\]
+After this transition, $\outp{a}{x}$ can interact with a receiver, and the sender proceeds concurrently as $P$. Because of requirement 1 the fact that a message has been received cannot be detected by P unless the receiver explicitly sends an acknowledgement. Because of requirement 2 a message cannot disappear unless it is received. Therefore, $\sil{(\outp{a}{x} \para P)}$ can be paraphrased as ``send $\outp{a}{x}$ asynchronously and continue as $P$".
+
+Of course, with a scheme for sending explicit acknowledgements synchronous communication can be emulated, so the loss of expressiveness from the full $\pi$-calculus is largely pragmatic. In agents like
+\[
+\sil{\res{b}{(\outp{a}{b} \para \inp{b}{x}{P})}}
+\]
+the scope of $b$ is used to protect this kind of acknowledgement. Here the agent can do an asynchronous output $\outp{a}{b}$, but it is blocked from continuing until it receives an acknowledgement along $b$:
+\[
+\res{b}{(\outp{a}{b} \para \inp{b}{x}{P})} \para \inp{a}{x}{Q} \overset{\tau}{\longrightarrow} \res{b}{(\inp{b}{x}{P} \para Q\{b/x\})}
+\]
+The acknowledgement can only arrive from the recipient ($Q$) of the message, since there is no other agent that can send along the restricted name $b$.
+
+\section{Operational Semantics}
+
+The standard way to give an operational semantics to a process algebra is through a labelled transition system, where transitions are of kind $P \overset{\alpha}{\longrightarrow} Q$ for some set of actions ranged over by $\alpha$. The $\pi$-calculus follows this norm and most of the rules of transitions are similar to other algebras. As expected, for an agent $\prefix{\alpha}{P}$ there will be a transition labelled $\alpha$ leading to $P$. Also as expected, the Restriction operator will not permit an action with the restricted name as subject, so $\res{a}{\out{a}{u}{P}}$ has no transitions and is therefore semantically equivalent to $\nil$. But what action should 
+\[
+\res{u}{\out{a}{u}{P}}
+\]
+have? Clearly it must have \emph{some} action; inserted in a context $\inp{a}{x}{Q} \para \res{u}{\out{a}{u}{P}}$ it will enable an interaction since, assuming $u \notin \fn(Q)$, this term is structurally congruent to $\res{u}{(\inp{a}{x}{Q} \para \out{a}{u}{P})}$ and there is an interaction between the components. So $\res{u}{\out{a}{u}{P}}$ is not, intuitively, something that behaves as $\nil$. On the other hand it is clearly distinct from $\out{a}{u}{P}$ and it can therefore not be given the action $\outp{a}{u}$. 
+
+The solution is to give $\res{u}{\outp{a}{u}}$ a new kind of action called \emph{bound output} written $\boutp{a}{u}$. The intuition is that a local name represented by $u$ is transmitted along $a$, extending the scope of $u$ to the recipient. In summary, the \emph{actions} ranged over by $\alpha$ consists of four classes:
+
+\begin{enumerate}
+
+\item The internal action $\silp$.
+
+\item The (free) output actions of kind $\outp{a}{x}$.
+
+\item The input actions of kind $\inpp{a}{x}$.
+
+\item The (bound) output actions $\boutp{a}{u}$.
+  
+\end{enumerate}
+
+The three first kinds correspond precisely to the Prefixes in the calculus. For the sake of symmetry we introduce a fourth kind of Prefix $\boutp{a}{x}$, for $a \neq x$, corresponding to the bound output action. The bound output Prefix is merely a combination of Restriction and output as defined by $\bout{a}{x}{P} = \res{x}{\out{a}{x}{P}}$. In this way we can continue to let $\alpha$ range over both actions and Prefixes, where $\fn(\boutp{a}{x}) = \{a\}$ and $\bn(\boutp{a}{x}) = \{x\}$.
+
+An input transition $\tran{P}{\inpp{a}{x}}{Q}$ means that $P$ can receive some name $u$ along $a$, and then evolve to $Q\{u/x\}$. In that action $x$ does not represent the value received, rather it is a reference to the places in $Q$ where the received name will appear.
+
+Similarly, the bound output transition $\tran{P}{\boutp{a}{x}}{Q}$ signifies an output of a local name and $x$ indicates where in $Q$ this name occurs. Here $x$ is not a functional parameter, it just represents something that is distinct from all the names in the environment.
+
+The labelled transition semantics is given in Table 3. The rule $\rulname{STRUCT}$ makes explicit our intuition that structurally congruent agents count as the same for the purpose of the semantics. This simplifies the system of transition rules. For example, $\rulname{SUM}$ is sufficient as it stands in Table 3. The dual rule
+\[
+\rul{SUM$_2$}{\tran{Q}{\alpha}{Q'}}{\tran{P + Q}{\alpha}{Q'}}
+\]
+is redundant since it can be inferred from $\rulname{SUM}$ and $\rulname{STRUCT}$. Similar arguments hold for the rules $\rulname{PAR}$ and $\rulname{COM}$.
+
+In the rule $\rulname{PAR}$, note the extra condition that $Q$ does not contain a name bound in $\alpha$. This conforms to the intuition that bound names are just references to occurrences; in the conclusion $\tran{P \para Q}{\alpha}{P' \para Q}$ the action should not refer to any occurrence in $Q$. 
+
+The rule $\rulname{OPEN}$ is the rule generating bound outputs. It is interesting to note that bound outputs actions do not appear in the $\rulname{COM}$ rule and therefore cannot interact directly with inputs. Such interactions are instead inferred by using structural congruence to pull the Restriction outside both interacting agents (possibly after an alpha-conversion). In view of this it might be argued that bound output transitions and the rule $\rulname{OPEN}$ can be omitted altogether, since they have no impact on inferring interactions. Although tecnically this argument is valid there are other reasons for including the bound output. One is of philosophical nature: we think of the agent $\res{u}{\outp{a}{u}}$ as, intuitively, being able to do something, namely exporting a local name, and if we do not dignify that with a transition we introduce an incompleteness in the semantics in that not all behaviour is manifested by transitions. Another reason is of technical convenience: when it comes to developing behavioural equivalences the bound output transitions will turn out to be indispensable.
+
+\begin{framed}
+  \begin{align*}
+    &\rul{STRUCT}{P' \equiv P, \: \tran{P}{\alpha}{Q}, \: Q \equiv Q'}{\tran{P'}{\alpha}{Q'}} \\[2.0ex]
+    &\rul{PREFIX}{}{\tran{\prefix{\alpha}{P}}{\alpha}{P}} \\[2.0ex]
+    &\rul{SUM}{\tran{P}{\alpha}{P'}}{\tran{P + Q}{\alpha}{P'}} \\[2.0ex]
+    &\rul{MATCH}{\tran{P}{\alpha}{P'}}{\tran{\ifthen{x = x}{P}}{\alpha}{P'}} \\[2.0ex]
+    &\rul{MISMATCH}{\tran{P}{\alpha}{P'}, \: x \neq y}{\tran{\ifthen{x \neq y}{P}}{\alpha}{P'}} \\[2.0ex]
+    &\rul{PAR}{\tran{P}{\alpha}{P'}, \: \bn(\alpha) \cap \fn(Q) = \varnothing}{\tran{P \para Q}{\alpha}{P' \para Q}} \\[2.0ex]
+    &\rul{COM}{\tran{P}{\inpp{a}{x}}{P'}, \: \tran{Q}{\outp{a}{u}}{Q'}}{\tran{P \para Q}{\silp}{P'\{u/x\} \para Q'}} \\[2.0ex]
+    &\rul{RES}{\tran{P}{\alpha}{P'}, \: x \notin \alpha}{\tran{\res{x}{P}}{\alpha}{\res{x}{P'}}} \\[2.0ex]
+    &\rul{OPEN}{\tran{P}{\outp{a}{x}}{P'}, \: a \neq x}{\tran{\res{x}{P}}{\boutp{a}{x}}{P'}}
+  \end{align*}
+  \captionof{table}{The operational semantics.}
+\end{framed}
+
+\section{Bisimilarity and Congruence}
+
+We shall look here at one of the most fundamental behavioural equivalences, namely strong bisimilarity. It turns out not to be a congruence --- it is not preserved by input prefix --- but fortunately the largest contained congruence has a simple characterisation.
+
+\subsection{Bisimilarity}
+
+In most process algebras a family of equivalence relations on agents is based on bisimulations, and the $\pi$-calculus is no exception. The generic definition of a bisimulation is that it is a symmetric binary relation $\mathcal{R}$ on agents satisfying
+\[
+P \mathcal{R} Q \text{ and } \tran{P}{\alpha}{P'} \quad \text{ implies } \quad \exists Q' : \tran{Q}{\alpha}{Q'} \wedge P' \mathcal{R} Q' 
+\]
+The intuition is that if $P$ can do an action then $Q$ can do the same action and the derivatives lie in the same direction. Two agents are said to be bisimilar if they are by related by some bisimulation; this means that they can indefinitely mimic the transitions of each other.
+
+For the $\pi$-calculus extra care has to be taken for actions with bound objects. Consider
+\[
+P = \inpp{a}{u}, \qquad Q = \inp{a}{x}{\res{v}{\outp{v}{u}}}
+\]
+Intuitively these represent the same behaviour: they can do an input along $a$ and then nothing more. However, $Q$ has the name $u$ free where $P$ has not. Therefore, $x$ in $Q$ cannot be alpha-converted to $u$, and the transition $\tran{P}{\inpp{a}{u}}{\nil}$ cannot be simulated by $Q$. Such a difference between $P$ and $Q$ is not important since, if $P$ has an action $\inpp{a}{u}$, then by alpha-conversion it also has a similarly derived action $\inpp{a}{w}$ for infinitely maybe $w$. Clearly it is sufficient for $Q$ to simulate only the bound actions where the bound object is not free in $Q$. This argument applies to both input and output actions.
+
+Also, input (but not bound output) actions mean that the bound object is a placeholder for something to be received. Therefore, if $\tran{P}{\inpp{a}{x}}{P'}$ then the behaviour of $P'$ must be considered under all substitutions $\{u/x\}$, and we must require that for each such substitution $Q'$ is related to $P'$, or in other words, that they are related for each value received.
+
+In the following we will use the phrase ``$\bn(\alpha)$ is fresh" in a definition to mean that the name in $\bn(\alpha)$, if any, is different from any free name occurring in any of the agents in the definition.
+
+\begin{definition}
+A \textnormal{(strong) bisimulation} is a symmetric binary relation $\mathcal{R}$ on agents satisfying the following: $P \mathcal{R} Q$ and $\tran{P}{\alpha}{P'}$ where \textnormal{$\bn(\alpha)$} is fresh implies that
+  \begin{enumerate}[\textnormal{\textbf{(i)}}]
+  \item If $\alpha = \inpp{a}{x}$ then $\exists Q' : \:\: \tran{Q}{\inpp{a}{x}}{Q'} \: \wedge \: \forall u : \:\: P'\{u/x\} \mathcal{R} Q'\{u/x\}$
+  \item If $\alpha$ is not an input then $\exists Q' : \tran{Q}{\alpha}{Q'} \wedge P' \mathcal{R} Q'$
+  \end{enumerate}
+$P$ and $Q$ are \textnormal{(strongly) bisimilar}, written $P \bsim Q$, if they are related by a bisimulation.
+\end{definition}
+
+It follows that $\bsim$, which is the union of all bisimulations, is a bisimulation. We also immediately have that $P \equiv Q$ implies $P \bsim Q$, by virtue of the rule $\rulname{STRUCT}$.
+
+This demonstrates that $\bsim$ is not in general closed under substitutions, i.e., from $P \bsim Q$ we cannot conclude that $P\sigma \bsim Q\sigma$, demonstrating that $\bsim$ is not preserved by input Prefix, i.e., that from $P \bsim Q$ we cannot conclude that $\inp{a}{x}{P} \bsim \inp{a}{x}{Q}$.
+
+However, we have the following results:
+
+\begin{theorem}
+If $P \bsim Q$ and $\sigma$ is injective then $P\sigma \bsim Q\sigma$.
+\end{theorem}
+
+\begin{theorem}
+$\bsim$ is an equivalence.
+\end{theorem}
+
+\begin{theorem}
+$\bsim$ is preserved by all operators except input Prefix.
+\end{theorem}
+
+\subsection{Congruence}
+
+The fact that bisimilarity is not preserved by input Prefix makes us seek the largest congruence included in bisimilarity. The definition is fortunately simple:
+
+\begin{definition} \label{congruence}
+Two agents $P$ and $Q$ are \textnormal{(strongly) congruent}, written $P \congr Q$, if $P\sigma \bsim Q\sigma$ for all substitutions $\sigma$.
+\end{definition}
+
+\begin{theorem}
+Strong congruence is the largest congruence in bisimilarity.
+\end{theorem}
+
+\section{Algebraic Theory}
+
+In this section we consider algebraic axiomatisations of late strong bisimilarity and congruence. This means that we identify a set of axioms for equality between agents, and that together with equational reasoning these imply all true equalities. We get one such set of axioms for bisimilarity and another set for congruence. These results only hold for the finite subcalculus, i.e., we do not include Identifiers or Replication. (In the whole calculus such a result cannot be obtained since bisimilarity, and also congruence, is not recursively enumerable and hence has no decidable axiomatisation.)
+
+\subsection{Bisimilarity}
+
+Initially we restrict attention to the finite subcalculus without Parallel composition. The axioms for strong late bisimilarity are given in Table \ref{ax-bsim}. We also implicitly use the laws of equational reasoning, i.e., that equality between agents is reflexive, symmetric and transitive. Note that substitutivity (that an agent can replace an equal agent in any expression) is \emph{not} implied, since bisimilarity is not a congruence.
+
+The axioms deserve little comment. $\rulname{STR}$ says that all laws for structural congruence can be used. $\rulname{CONGR1}$ says that all operators except input Prefix preserve bisimilarity, and $\rulname{CONGR2}$ says that to infer bisimilarity of input Prefixes it is sufficient to establish bisimilarity under substitutions for the bound object. Note that $\rulname{CONGR2}$ mentions only a finite number of such substitutions: names free in the agents under consideration plus one more name represented by $x$. In view of Proposition 2 this is sufficient since all other names can be obtained through an injective substitution on $x$. Laws $\rulname{M1}$--$\rulname{MM2}$ serve to evaluate \texttt{if} constructs, and therefore a clause for Match and Mismatch in $\rulname{CONGR1}$ is unnecessary.
+
+$\rulname{R1}$--$\rulname{R2}$ mean that a Restriction can be pushed through a Prefix or disappear; the only exception is when $x$ is the free object of $\alpha$ in which case neither $\rulname{R1}$ or $\rulname{R2}$ applies. Observe that $\rulname{R1}$ can be regarded as scope extension over Prefix; as was mentioned in Section 2.2 an option is to have this law as part of the structural congruence. Finally $\rulname{R3}$ means that Restriction distributes over Sum. This law is more powerful than scope extension over sum, since it splits one binder into two.
+
+\begin{center}
+\framebox{
+\begin{minipage}{\textwidth}
+  \begin{tabular}[t]{lll}
+    $\rulname{STR}$ & If $P \equiv Q$ then $P = Q$ \\  
+    $\rulname{CONGR1}$ & If $P = Q$ then
+    \begin{tabular}[t]{ll}
+	  & $\out{a}{u}{P} = \out{a}{u}{Q}$ \\
+      & $\sil{P} = \sil{Q}$ \\
+      & $P + R = Q + R$ \\
+      & $\res{x}{P} = \res{x}{Q}$ \\
+    \end{tabular} \\
+    $\rulname{CONGR2}$ & \multicolumn{2}{l}{If $P\{y/x\} = Q\{y/x\}$ for all $y \in \fn(P, Q, x)$ then $\inp{a}{x}{P} = \inp{a}{x}{Q}$} \\ \\
+	$\rulname{S}$ & $P + P \enspace = \enspace P$ \\ 
+	$\rulname{M1}$ & $\ifthen{x = x}{P} \enspace = \enspace P$ \\ 
+	$\rulname{M2}$ & $\ifthen{x = y}{P} \enspace = \enspace \nil$ & if $x \neq y$ \\ 
+	$\rulname{MM1}$ & $\ifthen{x \neq x}{P} \enspace = \enspace \nil$ \\ 
+	$\rulname{MM2}$ & $\ifthen{x \neq y}{P} \enspace = \enspace P$ & if $x \neq y$ \\ 
+	$\rulname{R1}$ & $\res{x}{\prefix{\alpha}{P}} \enspace = \enspace \prefix{\alpha}{\res{x}{P}}$ & if $x \notin \alpha$ \\ 	
+	$\rulname{R2}$ & $\res{x}{\prefix{\alpha}{P}} \enspace = \enspace \nil$ & if $x$ is the subject of $\alpha$ \\ 
+	$\rulname{R3}$ & $\res{x}{(P + Q)} \enspace = \enspace \res{x}{P} + \res{x}{Q}$
+  \end{tabular} \\
+  \captionof{table}{Axioms for strong late bismilarity.} \label{ax-bsim} 
+\end{minipage}%
+}
+\end{center}
+
+It is easily seen that all laws are sound, so if $P = Q$ is provable then it must hold that $P \bsim Q$. We shall now prove the converse. In the following it is important to remember that $\alpha$ ranges also over bound output Prefixes of kind $\boutp{a}{x}$. Let the \emph{depth} of an agent be the maximal nesting of its Prefixes.
+
+\begin{theorem} \label{hnf-eq}
+Using the axioms in Table \ref{ax-bsim} every agent $P$ is provable equal to a \textnormal{head normal form (hnf)} of kind $\sum_i \prefix{a_i}{P_i}$ of no greater depth.
+\end{theorem}
+
+\begin{theorem} \label{completeness}
+If $P \bsim Q$ then $P = Q$ is provable from the axioms in Table \ref{ax-bsim}.
+\end{theorem}
+
+We now turn to the Parallel operator. The idea behind the axiomatisation is to introduce an expansion law through which the composition of two head normal forms is provably equal to a head normal form. With this law Proposition \ref{hnf-eq} will continue to hold for the calculus with Parallel, and therefore the proof of Proposition \ref{completeness} needs not change. The expansion law is given in Table \ref{exp-law}.
+
+\begin{center}
+\framebox{
+\begin{minipage}{\textwidth}
+$\rulname{EXP}$ Let $P \, = \, \sum_i \prefix{\alpha_i}{P_i}$ and $Q \, = \, \sum_j \prefix{\beta_j}{Q_j}$ where $\bn(\alpha_i) \cap \fn(Q) = \varnothing$ and $\bn(\beta_j) \cap \fn(P) = \varnothing$ for all $i,j$, and none of $\alpha_i$ or $\beta_j$ is a bound output Prefix. Then
+\[
+P \para Q \quad = \quad \sum_i \alpha_i.(P_i \para Q) \: + \: \sum_j \beta_j.(P \para Q_j) + \sum_{\alpha_i comp \beta_j} \sil{R_{ij}}
+\]
+where the relation $\alpha_i comp \beta_j$ and $R_{ij}$ are defined as follows: either $\alpha_i = \inpp{a}{x}$ and $\beta_j = \outp{a}{u}$ in which case $R_{ij} = P_i\{u/x\} \para Q_j$, or conversely $\alpha_i = \outp{a}{u}$ and $\beta_j = \inpp{a}{x}$ in which case $R_{ij} = P_i \para Q_j\{u/x\}$.
+
+\captionof{table}{Expansion law for strong bisimilarity.} \label{exp-law}
+\end{minipage}%
+}
+\end{center}
+
+
+\subsection{Congruence}
+
+Following Definition \ref{congruence} we immediately obtain an axiomatisation of $\congr$ by adding that definition as a law. Interestingly, there is an alternative axiomatisation that does not involve quantification over substitutions and does not refer back to bisimilarity. Again we begin with the subcalculus without Parallel.
+
+It is informative to begin by examining the axioms in Table \ref{ax-bsim} to see what needs to change. The rule $\rulname{STR}$ is still valid and useful, and the rules $\rulname{CONGR1}$--$\rulname{CONGR2}$ can be replaced by a simpler rule saying that $\congr$ is a congruence. The problematic laws are $\rulname{M2}$ and $\rulname{MM2}$ which are unsound for congruence. For example, even though $\ifthen{x = y}{P}$ and $\nil$ are bisimilar when $x \neq y$ they are not necessarily congruent since a substitution $\{x/y\}$ makes them non-bisimilar. In an axiom system for $\congr$ we cannot rely on axioms which eliminate unguarded Match and Mismatch operators.
+
+A concise presentation of the axioms depends on the notion of a \emph{Generalized} match operator written $\ifthen{M}{P}$, where $M$ is a conjunction of conditions of type $x = y$ and $x \neq y$. The Generalized match is simply defined to be a nested sequence of Matches and Mismatches, one for each condition:
+\[
+	\ifthen{m_1 \wedge \cdots \wedge m_k}{P} \,=\, \ifthen{m_1}{(\cdots(\ifthen{m_k}{P})\cdots)}
+\]
+where each $m_i$ is of type $x = y$ or $x \neq y$. We say that $M$ logically implies $N$ if all substitutions that make the conditions in $M$ true also make the conditions in $N$ true, and that they are logically equivalent, written $M \Leftrightarrow N$, if they imply each other. This allows us to use the compact law $\rulname{GM1}$:
+\[
+	\ifthen{M}{P} = \ifthen{N}{P} \qquad \text{if } M \Leftrightarrow N
+\]
+in place of a set of laws for nesting of Matches and Mismatches. The axioms for strong congruence are given in Table \ref{ax-congr}.
+
+\begin{center}
+\framebox{
+\begin{minipage}{\textwidth}
+  \begin{tabular}[t]{ll}
+    $\rulname{STR}$ & If $P \equiv Q$ then $P = Q$ \\  
+    $\rulname{CONGR}$ & ``=" is preserved by all operators \\
+    \\
+	$\rulname{S}$ & $P + P \enspace = \enspace P$ \\ 
+	$\rulname{MM1}$ & $\ifthen{x \neq x}{P} \enspace = \enspace \nil$ \\ 
+	$\rulname{GM1}$ & $\ifthen{M}{P} \enspace = \enspace \ifthen{N}{P}$ \hfill if $M \Leftrightarrow N$ \\
+	$\rulname{GM2}$ & $\ifthenelse{x = y}{P}{P} \enspace = \enspace P$ \\ 
+	$\rulname{GM3}$ & $\ifthen{M}{(P_1 + P_2)} \enspace = \enspace \ifthen{M}{P_1} + \ifthen{M}{P_2}$ \\ 
+	$\rulname{GM4}$ & $\ifthen{M}{\prefix{\alpha}{P}} \enspace = \enspace \ifthen{M}{(\prefix{\alpha}{\ifthen{M}{P}})}$ \quad if $\bn(\alpha) \notin M$ \\
+	$\rulname{GM5}$ & $\ifthen{x = y}{\prefix{\alpha}{P}} \enspace = \enspace \ifthen{x = y}{\prefix{(\alpha\{x/y\})}{P}}$ \\
+	$\rulname{GM6}$ & $\res{x}{\ifthen{x = y}{P}} \enspace = \enspace \nil$ \hfill if $x \neq y$ \\
+	$\rulname{R1}$ & $\res{x}{\prefix{\alpha}{P}} \enspace = \enspace \prefix{\alpha}{\res{x}{P}}$ \hfill if $x \notin \alpha$ \\ 	
+	$\rulname{R2}$ & $\res{x}{\prefix{\alpha}{P}} \enspace = \enspace \nil$ \hfill if $x$ is the subject of $\alpha$ \\ 
+	$\rulname{R3}$ & $\res{x}{(P + Q)} \enspace = \enspace \res{x}{P} + \res{x}{Q}$
+  \end{tabular} \\
+  \captionof{table}{Axioms for strong late congruence.} \label{ax-congr} 
+\end{minipage}%
+}
+\end{center}
+
+We comment briefly on the new axioms. $\rulname{GM2}$ is a form of case analysis, allowing us to split an agent to a Sum of two mutually exclusive conditions. Writing out the definition of $\ifthenelse{\dots}{\dots}$ this law is
+\[
+	\ifthen{x = y}{P} \enspace + \enspace \ifthen{x \neq y}{P} \quad = \quad P
+\]
+$\rulname{GM3}$ is a kind of distributive law for Generalized match over Sum. $\rulname{GM4}$ says that a test, once passed, can be done again after an action $\alpha$, since the action cannot invalidate the outcome of the test. Here the side condition on $\bn(\alpha)$ is important. $\rulname{GM5}$ embodies the essence of a match: if $x$ and $y$ have been deemed equal then one can substitute the other (the substitution is defined to not affect $\bn(\alpha)$). Finally $\rulname{GM6}$ is the essence of Restriction: a restricted name can never be made equal to another name so the Match will always come out as false.
+
+It is easy to establish that all laws are sound for congruence. The proof of completeness uses another kind of head normal form and is more involved than the corresponding proof for bisimilarity, and we shall here only sketch it. It relies on the notion of \emph{complete} conjunctions. Formally, a conjunction $M$ is complete on a set of names $V$ if $M$ implies either $x = y$ or $x \neq y$ for all names $x,y$ in $V$. In other words, $M$ expresses unambiguously which names are the same and which are not.
+
+\begin{definition} \label{vhnf}
+$P$ is in \textnormal{head normal form on a finite set of names $V$ ($V$-hnf)} if 
+\textnormal{
+\[
+	P \quad = \quad \sum_i \ifthen{M_i}{\prefix{\alpha_i}{P_i}}
+\]
+}
+where for all $i, \textnormal{$\bn(\alpha_i)$} \notin V$, and each $M_i$ is complete on $V$.
+\end{definition}
+
+So a $V$-hnf is a Sum of Generalized matches where each conjunction is complete on $V$.
+
+\begin{theorem} \label{vhnf-eq}
+For any $V$, any agent P is provably equivalent to a $V$-hnf of no greater depth.
+\end{theorem}
+
+\begin{theorem} \label{compl-congr}
+If $P \congr Q$ then $P = Q$ is provable from the axioms in Table \ref{ax-congr}.
+\end{theorem}
+
+Finally we consider also the Parallel operator. By analogy with the case for bisimilarity it is enough to include an axiom which implies that the Parallel composition of two $V$-hnfs is a $V$-hnf. Unfortunately the axiom $\rulname{EXP}$ in Table \ref{exp-law} is not sound for congruence, since a substitution may identify two names and thereby enable a communication. The amended expansion law for congruence is given in Table \ref{exp-law-congr}. Note the essential use of Matches to determine if a communication is possible. With this law Propositions \ref{vhnf-eq} and \ref{compl-congr} hold. Incidentally, the law is sound and complete also for bisimilarity, i.e., it can be used in place of $\rulname{EXP}$ for the purpose of Proposition \ref{completeness}.
+
+\begin{center}
+\framebox{
+\begin{minipage}{\textwidth}
+$\rulname{EXP2}$ Let $P \, = \, \sum_i \ifthen{M_i}{\prefix{\alpha_i}{P_i}}$ and $Q \, = \, \sum_j \ifthen{N_j}{\prefix{\beta_j}{Q_j}}$ where $\bn(\alpha_i) \cap \fn(Q) = \varnothing$ and $\bn(\beta_j) \cap \fn(P) = \varnothing$ for all $i,j$, and none of $\alpha_i$ or $\beta_j$ is a bound output Prefix. Then
+\begin{equation*}
+\begin{aligned}
+P \para Q \quad = \quad & \sum_i \ifthen{M_i}{\alpha_i.(P_i \para Q)} \: + \: \sum_j \ifthen{N_j}{\beta_j.(P \para Q_j)} \\
+& + \sum_{\alpha_i opp \beta_j} \ifthen{M_i \wedge N_i \wedge a_i = b_j}{\sil{R_{ij}}}
+\end{aligned}
+\end{equation*}
+where the relation $\alpha_i opp \beta_j$, $a_i$, $b_j$ and $R_{ij}$ are defined as follows: either $\alpha_i = \inpp{a_i}{x}$ and $\beta_j = \outp{b_j}{u}$ in which case $R_{ij} = P_i\{u/x\} \para Q_j$, or conversely $\alpha_i = \outp{a_i}{u}$ and $\beta_j = \inpp{b_j}{x}$ in which case $R_{ij} = P_i \para Q_j\{u/x\}$.
+
+\captionof{table}{Expansion law for strong congruence.} \label{exp-law-congr}
+\end{minipage}%
+}
+\end{center}
+
+\appendix
+
+\section{Preliminaries}
+
+\subsection{Universal Algebra}
+
+\subsubsection{Congruence}
+
+\begin{definition}
+Let $A$ be an algebraic structure. An equivalence relation $R$ on $A$ is a \textnormal{congruence on $A$} if for all operation $f$ in A it holds that
+\[
+	a_i R b_i \Rightarrow f(a_1, \cdots, a_n) R f(b_1, \cdots, b_n)
+\]
+for all $1 \leq i \leq n$, with $n$ the arity of $f$. $R$ is said to be \textnormal{compatible with} (or have the \textnormal{substitution property} with respect to) the operation $f$.
+\end{definition}
+
+Informally, a congruence relation is an equivalence relation that is preserved by all operations of the structure. The common theme is that a congruence is an equivalence relation on an algebraic object that is compatible with the algebraic structure, in the sense that the operations are well-defined on the equivalence classes.
+
+\subsection{Labelled Transition Systems}
+
+\subsubsection{Transition Systems}
+
+\begin{definition}
+A \textnormal{transition system} is a pair $(S, \rightarrow)$ where $S$ is a set of states and $\rightarrow$ is a set of state transitions (i.e., a subset of $S \times S$). A transition from state $p$ to state $q$, i.e. $(p, q) \in \rightarrow$, is written as $p \rightarrow q$.
+\end{definition}
+
+\begin{definition}
+A \textnormal{labelled transition system} is a tuple $(S, \Lambda, \rightarrow)$ where $S$ is a set of states, $\Lambda$ is a set of labels and $\rightarrow$ is a set of labelled transitions (i.e., a subset of $S \times \Lambda \times S$). $(p,\alpha,q) \in \rightarrow$ is written as $\tran{p}{\alpha}{q}$ represents there is a transition from state $p$ to state $q$ with label $\alpha$.
+\end{definition}
+
+\subsubsection{Simulation Preorder}
+
+\begin{definition}
+Given a labelled state transition system $(S, \Lambda, \rightarrow)$, a \textnormal{simulation relation} is a binary relation $R$ over $S$ (i.e. $R \subseteq S \times S$) such that for every pair of elements $(p, q) \in R$, for all $\alpha \in \Lambda$, and for all $p' \in S$, $\tran{p}{\alpha}{p'}$ implies that there is a $q' \in S$ such that $\tran{q}{\alpha}{q'}$ and $(p',q') \in R$.
+\end{definition}
+
+Given two states $p$ and $q$ in $S$, $p$ \emph{simulates} $q$, written $p \lesssim q$ if there is a simulation $R$ such that $(p, q) \in R$. The relation $\lesssim$ is a preorder, and is usually called the \emph{simulation preorder}. It is the largest simulation relation over a given transition system. Two states $p$ and $q$ are said to be \emph{similar}, written $p \simeq q$, if $p \lesssim q$ and $q \lesssim p$. Similarity is an equivalence relation, but it is coarser than bisimilarity. When comparing two different transition systems $(S_1, \Lambda_1, \rightarrow_1)$ and $(S_2, \Lambda_2, \rightarrow_2)$, the basic notions of simulation and similarity can be used by forming the disjoint composition of the two machines, $(S, \Lambda, \rightarrow)$ with $S = S_1 \uplus S_2$, $\Lambda = \Lambda_1 \uplus \Lambda_2$ and $\rightarrow \:\: = \:\: \rightarrow_1 \uplus \rightarrow_2$.
+
+\subsubsection{Bisimulation}
+
+\begin{definition}
+Given a labelled state transition system $(S, \Lambda, \rightarrow)$, a \textnormal{bisimulation} relation is a binary relation $R$ over $S$ (i.e., $R \subseteq S \times S$) such that both $R$ and its inverse $R^{-1}$ are simulations. 
+
+Equivalently $R$ is a bisimulation if for every $p, q$ in S with $(p,q) \in R$, for all $\alpha \in \Lambda$:
+\begin{enumerate}
+\item For all $p' \in S$, $\tran{p}{\alpha}{p'}$ implies that there is a $q' \in S$ such that $\tran{q}{\alpha}{q'}$ and $(p',q') \in R$ and, symmetrically,
+\item For all $q' \in S$, $\tran{q}{\alpha}{q'}$ implies that there is a $p' \in S$ such that $\tran{p}{\alpha}{p'}$ and $(p',q') \in R$.
+\end{enumerate}
+\end{definition}
+
+Given two states $p, q \in S$, $p$ is \emph{bisimilar} to $q$, written $p \sim q$, if there is a bisimulation $R$ such that $(p, q) \in R$. The bisimilarity relation $\sim$ is an equivalence relation. Furthermore, it is the largest bisimulation relation over a given transition system. Intuitively, a bisimulation is a binary relation between state transition systems, associating systems that behave in the same way in the sense that one system simulates the other and vice versa. In other words, two systems are bisimilar if they match each other's moves. In this sense, each of the systems cannot be distinguished from the other by an observer. Experience has shown that bisimulation is a suitable equivalence when reasoning about concurrent processes.
+
+\end{document}
