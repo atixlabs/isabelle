@@ -53,7 +53,7 @@
 
 The $\pi$-calculus is a mathematical model of processes whose interconnections change as they interact. The basic computational step is the transfer of a communication link between two processes; the recipient can then use the link for further interaction with other parties. The idea that the names of the links belong to the same category as the transferred objects is one of the cornerstones of the calculus, and is one way in which it is different from other process algebras. 
 
-At first sight it appears as if the $\pi$-calculus is just a specialised form of a value-passing process algebra where the values are links. In such a comparison the calculus may be thought rather poor since there are no data types and no functions defined on the names; the trasferable entities are simple atomic things without any internal structure. The reason that the $\pi$-calculus nevertheless is considered more expressive is that it admits migrating local scopes. Most process algebras have a way to declare a communication link local to a set of processes. For example the fact that $P$ and $Q$ share a private port $a$ is symbolised by $\res{a}{(P|Q)}$. It is similar in that no other process can use $a$ immediately as a link to $P$ or $Q$. The difference is that the name $a$ is also a transferable object and as such can be sent, by $P$ or $Q$, to another process which then can use the restricted link. So, although the transferable objects are simple atomic things they can also be declared local with a defined scope, and in this way the calculus transcends the ordinary value-passing process algebras. This is also the main source of diffculty in the development of the theory because the scope of an object, as represented by the operands of its restriction, must migrate with the object as it is transferred between processes.
+At first sight it appears as if the $\pi$-calculus is just a specialised form of a value-passing process algebra where the values are links. In such a comparison the calculus may be thought rather poor since there are no data types and no functions defined on the names; the trasferable entities are simple atomic things without any internal structure. The reason that the $\pi$-calculus nevertheless is considered more expressive is that it admits migrating local scopes. Most process algebras have a way to declare a communication link local to a set of processes. For example the fact that $P$ and $Q$ share a private port $a$ is symbolised by $\res{a}{(P \para Q)}$. It is similar in that no other process can use $a$ immediately as a link to $P$ or $Q$. The difference is that the name $a$ is also a transferable object and as such can be sent, by $P$ or $Q$, to another process which then can use the restricted link. So, although the transferable objects are simple atomic things they can also be declared local with a defined scope, and in this way the calculus transcends the ordinary value-passing process algebras. This is also the main source of diffculty in the development of the theory because the scope of an object, as represented by the operands of its restriction, must migrate with the object as it is transferred between processes.
 
 \section{The $\pi$-Calculus}
 
@@ -242,9 +242,9 @@ The first requirement disallows agents such as $\out{a}{x}{\outp{b}{y}}$, where 
 
 This subcalculus is known as the \emph{asynchronous} $\pi$-calculus, and the rationale behind it is as follows. An unguarded output Prefix $\outp{a}{x}$ occurring in a term represents a message that has been sent but not yet received. The action of sending the message is placing it in an unguarded position, as in the following
 \[
-\sil{(\outp{a}{x} \para P)} \overset{\tau}{\longrightarrow} \outp{a}{x} \para P
+\tran{\sil{(\outp{a}{x} \para P)}}{\silp}{\outp{a}{x} \para P}
 \]
-After this transition, $\outp{a}{x}$ can interact with a receiver, and the sender proceeds concurrently as $P$. Because of requirement 1 the fact that a message has been received cannot be detected by P unless the receiver explicitly sends an acknowledgement. Because of requirement 2 a message cannot disappear unless it is received. Therefore, $\sil{(\outp{a}{x} \para P)}$ can be paraphrased as ``send $\outp{a}{x}$ asynchronously and continue as $P$".
+After this transition, $\outp{a}{x}$ can interact with a receiver, and the sender proceeds concurrently as $P$. Because of requirement 1 the fact that a message has been received cannot be detected by $P$ unless the receiver explicitly sends an acknowledgement. Because of requirement 2 a message cannot disappear unless it is received. Therefore, $\sil{(\outp{a}{x} \para P)}$ can be paraphrased as ``send $\outp{a}{x}$ asynchronously and continue as $P$".
 
 Of course, with a scheme for sending explicit acknowledgements synchronous communication can be emulated, so the loss of expressiveness from the full $\pi$-calculus is largely pragmatic. In agents like
 \[
@@ -252,13 +252,13 @@ Of course, with a scheme for sending explicit acknowledgements synchronous commu
 \]
 the scope of $b$ is used to protect this kind of acknowledgement. Here the agent can do an asynchronous output $\outp{a}{b}$, but it is blocked from continuing until it receives an acknowledgement along $b$:
 \[
-\res{b}{(\outp{a}{b} \para \inp{b}{x}{P})} \para \inp{a}{x}{Q} \overset{\tau}{\longrightarrow} \res{b}{(\inp{b}{x}{P} \para Q\{b/x\})}
+\tran{\res{b}{(\outp{a}{b} \para \inp{b}{x}{P})} \para \inp{a}{x}{Q}}{\silp}{\res{b}{(\inp{b}{x}{P} \para Q\{b/x\})}}
 \]
 The acknowledgement can only arrive from the recipient ($Q$) of the message, since there is no other agent that can send along the restricted name $b$.
 
 \section{Operational Semantics}
 
-The standard way to give an operational semantics to a process algebra is through a labelled transition system, where transitions are of kind $P \overset{\alpha}{\longrightarrow} Q$ for some set of actions ranged over by $\alpha$. The $\pi$-calculus follows this norm and most of the rules of transitions are similar to other algebras. As expected, for an agent $\prefix{\alpha}{P}$ there will be a transition labelled $\alpha$ leading to $P$. Also as expected, the Restriction operator will not permit an action with the restricted name as subject, so $\res{a}{\out{a}{u}{P}}$ has no transitions and is therefore semantically equivalent to $\nil$. But what action should 
+The standard way to give an operational semantics to a process algebra is through a labelled transition system, where transitions are of kind $\tran{P}{\alpha}{Q}$ for some set of actions ranged over by $\alpha$. The $\pi$-calculus follows this norm and most of the rules of transitions are similar to other algebras. As expected, for an agent $\prefix{\alpha}{P}$ there will be a transition labelled $\alpha$ leading to $P$. Also as expected, the Restriction operator will not permit an action with the restricted name as subject, so $\res{a}{\out{a}{u}{P}}$ has no transitions and is therefore semantically equivalent to $\nil$. But what action should 
 \[
 \res{u}{\out{a}{u}{P}}
 \]
