@@ -284,6 +284,8 @@ An input transition $\tran{P}{\inpp{a}{x}}{Q}$ means that $P$ can receive some n
 
 Similarly, the bound output transition $\tran{P}{\boutp{a}{x}}{Q}$ signifies an output of a local name and $x$ indicates where in $Q$ this name occurs. Here $x$ is not a functional parameter, it just represents something that is distinct from all the names in the environment.
 
+We say that $P'$ is a \emph{derivative} of $P$ if there are $P_1,\cdots,P_n,\alpha_1,\cdots,\alpha_n$ such that $\tran{P}{\alpha_1}{P_1}, \cdots\, \tran{P_{n-1}}{\alpha_n}{P_n}$ and $P_n = P'$. 
+
 The labelled transition semantics is given in Table 3. The rule $\rulname{STRUCT}$ makes explicit our intuition that structurally congruent agents count as the same for the purpose of the semantics. This simplifies the system of transition rules. For example, $\rulname{SUM}$ is sufficient as it stands in Table 3. The dual rule
 \[
 \rul{SUM$_2$}{\tran{Q}{\alpha}{Q'}}{\tran{P + Q}{\alpha}{Q'}}
@@ -404,7 +406,7 @@ $\rulname{R1}$--$\rulname{R2}$ mean that a Restriction can be pushed through a P
 	$\rulname{R2}$ & $\res{x}{\prefix{\alpha}{P}} \enspace = \enspace \nil$ & if $x$ is the subject of $\alpha$ \\ 
 	$\rulname{R3}$ & $\res{x}{(P + Q)} \enspace = \enspace \res{x}{P} + \res{x}{Q}$
   \end{tabular} \\
-  \captionof{table}{Axioms for strong late bismilarity.} \label{ax-bsim} 
+  \captionof{table}{Axioms for strong late bisimilarity.} \label{ax-bsim} 
 \end{minipage}%
 }
 \end{center}
@@ -574,5 +576,17 @@ Equivalently $R$ is a bisimulation if for every $p, q$ in S with $(p,q) \in R$, 
 \end{definition}
 
 Given two states $p, q \in S$, $p$ is \emph{bisimilar} to $q$, written $p \sim q$, if there is a bisimulation $R$ such that $(p, q) \in R$. The bisimilarity relation $\sim$ is an equivalence relation. Furthermore, it is the largest bisimulation relation over a given transition system. Intuitively, a bisimulation is a binary relation between state transition systems, associating systems that behave in the same way in the sense that one system simulates the other and vice versa. In other words, two systems are bisimilar if they match each other's moves. In this sense, each of the systems cannot be distinguished from the other by an observer. Experience has shown that bisimulation is a suitable equivalence when reasoning about concurrent processes.
+
+Bisimilarity can also be defined in order theoretical fashion, in terms of fixpoint theory, more precisely as the greatest fixed point of a certain function defined below.
+
+\begin{definition}
+Given a labelled state transition system $(S, \Lambda, \rightarrow)$, the function $F : \mathcal{P}(S \times S) \rightarrow \mathcal{P}(S \times S)$ is defined as follows: $F(R)$ is the set of all pairs $(p, q) \in S \times S$ such that:
+\begin{enumerate}
+\item $\forall \alpha \in \Lambda. \: \forall p' \in S. \: \tran{p}{\alpha}{p'} \Longrightarrow \exists q' \in S. \: \tran{q}{\alpha}{q'} \wedge (p',q') \in R$; and
+\item $\forall \alpha \in \Lambda. \: \forall q' \in S. \: \tran{q}{\alpha}{q'} \Longrightarrow \exists p' \in S. \: \tran{p}{\alpha}{p'} \wedge (p',q') \in R$.
+\end{enumerate}
+\end{definition}
+
+The bisimilarity relation $\sim$ is then defined to be the greatest fixed point of $F$. Therefore, it holds that $R$ is a bisimulation if and only if $R \subseteq F(R)$.
 
 \end{document}
